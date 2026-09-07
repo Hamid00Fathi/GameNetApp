@@ -82,7 +82,7 @@ class MainWindow(QMainWindow):
             return
 
         data = self.build_status_json()
-        url = f"https://gamenet-server.onrender.com/update/{self.username}"
+        url = f"https://gamenet-server-mongo.onrender.com/status/{self.username}"
 
         self.thread = SenderThread(url, data)
         self.thread.finished.connect(lambda r: print("نتیجه ارسال:", r))

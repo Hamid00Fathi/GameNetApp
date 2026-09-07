@@ -1,7 +1,5 @@
 from PyQt6 import uic
 from PyQt6.QtWidgets import QDialog, QMessageBox, QInputDialog
-from PyQt6.QtCore import QTimer , QThread, pyqtSignal
-import requests
 import os
 
 # 
@@ -52,28 +50,6 @@ class SelectUsernameWindow(QDialog):
 
         QMessageBox.information(self, "ذخیره شد", "نام کاربری ذخیره شد.")
 
-
-
-
-    # def on_send_finished(self, result):
-    #     print("نتیجه ارسال:", result)
-
-    # def send_update(self):
-    #     if not self.username or not self.main_window:
-    #         return
-
-    #     try:
-    #         data = self.main_window.build_status_json()
-    #     except Exception as e:
-    #         print("خطا در ساخت JSON:", e)
-    #         return
-
-    #     url = f"https://gamenet-server.onrender.com/update/{self.username}"
-
-    #     # اجرای ارسال در Thread جدا
-    #     self.thread = SenderThread(url, data)
-    #     self.thread.finished.connect(self.on_send_finished)
-    #     self.thread.start()
 
     def show_link(self):
         if not self.username:
