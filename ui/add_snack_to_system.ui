@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>Form</class>
+ <widget class="QWidget" name="Form">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>790</width>
+    <height>500</height>
+   </rect>
+  </property>
+  <property name="minimumSize">
+   <size>
+    <width>790</width>
+    <height>500</height>
+   </size>
+  </property>
+  <property name="maximumSize">
+   <size>
+    <width>790</width>
+    <height>500</height>
+   </size>
+  </property>
+  <property name="windowTitle">
+   <string>Form</string>
+  </property>
+  <layout class="QHBoxLayout" name="horizontalLayout">
+   <item>
+    <layout class="QGridLayout" name="gridLayout" columnstretch="3,0,2">
+     <item row="1" column="0">
+      <layout class="QGridLayout" name="gridLayout_2">
+       <item row="0" column="0">
+        <widget class="QPushButton" name="saveBtn">
+         <property name="font">
+          <font>
+           <family>B Nazanin</family>
+           <pointsize>12</pointsize>
+           <bold>true</bold>
+          </font>
+         </property>
+         <property name="text">
+          <string>ذخیره</string>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="2">
+        <widget class="QPushButton" name="addBtn">
+         <property name="font">
+          <font>
+           <family>B Nazanin</family>
+           <pointsize>12</pointsize>
+           <bold>true</bold>
+          </font>
+         </property>
+         <property name="text">
+          <string>اضافه کردن</string>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="1">
+        <widget class="QPushButton" name="deleteBtn">
+         <property name="font">
+          <font>
+           <family>B Nazanin</family>
+           <pointsize>12</pointsize>
+           <bold>true</bold>
+          </font>
+         </property>
+         <property name="text">
+          <string>حذف</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </item>
+     <item row="1" column="2">
+      <widget class="QLineEdit" name="searchInput">
+       <property name="placeholderText">
+        <string>جستجوی خوراکی</string>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="0">
+      <widget class="QTableWidget" name="selectedTable">
+       <property name="font">
+        <font>
+         <family>B Nazanin</family>
+         <pointsize>12</pointsize>
+         <bold>true</bold>
+        </font>
+       </property>
+       <property name="editTriggers">
+        <set>QAbstractItemView::NoEditTriggers</set>
+       </property>
+       <attribute name="horizontalHeaderMinimumSectionSize">
+        <number>150</number>
+       </attribute>
+       <column>
+        <property name="text">
+         <string>تعداد</string>
+        </property>
+       </column>
+       <column>
+        <property name="text">
+         <string>قیمت</string>
+        </property>
+       </column>
+       <column>
+        <property name="text">
+         <string>نام خوراکی</string>
+        </property>
+       </column>
+       <column>
+        <property name="text">
+         <string>snack_id</string>
+        </property>
+       </column>
+      </widget>
+     </item>
+     <item row="0" column="2">
+      <widget class="QTableWidget" name="snackTable">
+       <property name="font">
+        <font>
+         <family>B Nazanin</family>
+         <pointsize>12</pointsize>
+         <bold>true</bold>
+        </font>
+       </property>
+       <property name="editTriggers">
+        <set>QAbstractItemView::NoEditTriggers</set>
+       </property>
+       <attribute name="horizontalHeaderMinimumSectionSize">
+        <number>150</number>
+       </attribute>
+       <column>
+        <property name="text">
+         <string>قیمت</string>
+        </property>
+       </column>
+       <column>
+        <property name="text">
+         <string>خوراکی</string>
+        </property>
+       </column>
+       <column>
+        <property name="text">
+         <string>snack_id</string>
+        </property>
+        <property name="whatsThis">
+         <string/>
+        </property>
+       </column>
+      </widget>
+     </item>
+    </layout>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

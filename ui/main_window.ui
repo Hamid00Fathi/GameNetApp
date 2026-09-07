@@ -1,0 +1,321 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>Gamenet_Manager</class>
+ <widget class="QMainWindow" name="Gamenet_Manager">
+  <property name="windowModality">
+   <enum>Qt::NonModal</enum>
+  </property>
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1325</width>
+    <height>593</height>
+   </rect>
+  </property>
+  <property name="minimumSize">
+   <size>
+    <width>800</width>
+    <height>500</height>
+   </size>
+  </property>
+  <property name="baseSize">
+   <size>
+    <width>0</width>
+    <height>0</height>
+   </size>
+  </property>
+  <property name="font">
+   <font>
+    <family>B Nazanin</family>
+    <pointsize>12</pointsize>
+    <bold>true</bold>
+   </font>
+  </property>
+  <property name="windowTitle">
+   <string>GameNet Manager</string>
+  </property>
+  <widget class="QWidget" name="centralwidget">
+   <layout class="QVBoxLayout" name="verticalLayout">
+    <item>
+     <widget class="QTableWidget" name="systemTable">
+      <property name="font">
+       <font>
+        <family>B Nazanin</family>
+        <pointsize>13</pointsize>
+        <bold>true</bold>
+       </font>
+      </property>
+      <property name="layoutDirection">
+       <enum>Qt::LeftToRight</enum>
+      </property>
+      <property name="autoScrollMargin">
+       <number>16</number>
+      </property>
+      <property name="editTriggers">
+       <set>QAbstractItemView::NoEditTriggers</set>
+      </property>
+      <property name="wordWrap">
+       <bool>true</bool>
+      </property>
+      <property name="cornerButtonEnabled">
+       <bool>true</bool>
+      </property>
+      <property name="columnCount">
+       <number>11</number>
+      </property>
+      <attribute name="horizontalHeaderMinimumSectionSize">
+       <number>10</number>
+      </attribute>
+      <attribute name="horizontalHeaderDefaultSectionSize">
+       <number>150</number>
+      </attribute>
+      <attribute name="horizontalHeaderHighlightSections">
+       <bool>true</bool>
+      </attribute>
+      <attribute name="horizontalHeaderShowSortIndicator" stdset="0">
+       <bool>true</bool>
+      </attribute>
+      <attribute name="verticalHeaderVisible">
+       <bool>false</bool>
+      </attribute>
+      <attribute name="verticalHeaderDefaultSectionSize">
+       <number>40</number>
+      </attribute>
+      <column>
+       <property name="text">
+        <string>تسویه حساب</string>
+       </property>
+      </column>
+      <column>
+       <property name="text">
+        <string>نام مشتری</string>
+       </property>
+      </column>
+      <column>
+       <property name="text">
+        <string>هزینه</string>
+       </property>
+      </column>
+      <column>
+       <property name="text">
+        <string>زمان</string>
+       </property>
+      </column>
+      <column>
+       <property name="text">
+        <string>افزودن خوراکی</string>
+       </property>
+      </column>
+      <column>
+       <property name="text">
+        <string>تغییر سیستم</string>
+       </property>
+      </column>
+      <column>
+       <property name="text">
+        <string>توقف</string>
+       </property>
+      </column>
+      <column>
+       <property name="text">
+        <string>شروع</string>
+       </property>
+      </column>
+      <column>
+       <property name="text">
+        <string>وضعیت</string>
+       </property>
+      </column>
+      <column>
+       <property name="text">
+        <string>سیستم</string>
+       </property>
+      </column>
+      <column>
+       <property name="text">
+        <string>یادداشت</string>
+       </property>
+      </column>
+     </widget>
+    </item>
+   </layout>
+  </widget>
+  <widget class="QMenuBar" name="menubar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>1325</width>
+     <height>32</height>
+    </rect>
+   </property>
+   <widget class="QMenu" name="menu">
+    <property name="title">
+     <string>تنظیمات</string>
+    </property>
+    <addaction name="btnAddSystem"/>
+    <addaction name="btnSystemList"/>
+    <addaction name="btnUsername"/>
+   </widget>
+   <widget class="QMenu" name="menu_2">
+    <property name="title">
+     <string>مشتریان</string>
+    </property>
+    <addaction name="btnAddCustomer"/>
+    <addaction name="btnChargeCustomer"/>
+    <addaction name="btnCustomerList"/>
+   </widget>
+   <widget class="QMenu" name="menu_3">
+    <property name="title">
+     <string>بوفه</string>
+    </property>
+    <addaction name="btnSnackList"/>
+   </widget>
+   <addaction name="menu"/>
+   <addaction name="menu_2"/>
+   <addaction name="menu_3"/>
+  </widget>
+  <widget class="QStatusBar" name="statusbar"/>
+  <action name="btnAddCustomer">
+   <property name="text">
+    <string>مشتری جدید</string>
+   </property>
+   <property name="font">
+    <font>
+     <family>B Nazanin</family>
+     <pointsize>11</pointsize>
+     <bold>true</bold>
+    </font>
+   </property>
+  </action>
+  <action name="btnChargeCustomer">
+   <property name="text">
+    <string>شارژ حساب</string>
+   </property>
+   <property name="font">
+    <font>
+     <family>B Nazanin</family>
+     <pointsize>11</pointsize>
+     <bold>true</bold>
+    </font>
+   </property>
+  </action>
+  <action name="btnCustomerList">
+   <property name="text">
+    <string>لیست مشتریان</string>
+   </property>
+   <property name="font">
+    <font>
+     <family>B Nazanin</family>
+     <pointsize>11</pointsize>
+     <bold>true</bold>
+    </font>
+   </property>
+  </action>
+  <action name="btnNewSnack">
+   <property name="text">
+    <string>جدید</string>
+   </property>
+   <property name="font">
+    <font>
+     <family>B Nazanin</family>
+     <pointsize>11</pointsize>
+     <bold>true</bold>
+    </font>
+   </property>
+  </action>
+  <action name="btnSnackList">
+   <property name="text">
+    <string>لیست خوراکی ها</string>
+   </property>
+   <property name="font">
+    <font>
+     <family>B Nazanin</family>
+     <pointsize>11</pointsize>
+     <bold>true</bold>
+    </font>
+   </property>
+  </action>
+  <action name="btnDeleteSnack">
+   <property name="text">
+    <string>حذف</string>
+   </property>
+   <property name="font">
+    <font>
+     <family>B Nazanin</family>
+     <pointsize>11</pointsize>
+     <bold>true</bold>
+    </font>
+   </property>
+  </action>
+  <action name="btnAddSnackToCustomer">
+   <property name="text">
+    <string>افزودن خوراکی به مشتری</string>
+   </property>
+  </action>
+  <action name="btnAddSystem">
+   <property name="text">
+    <string>افزودن سیستم</string>
+   </property>
+   <property name="font">
+    <font>
+     <family>B Nazanin</family>
+     <pointsize>11</pointsize>
+     <bold>true</bold>
+    </font>
+   </property>
+  </action>
+  <action name="btnRemoveSystem">
+   <property name="text">
+    <string>حذف سیستم</string>
+   </property>
+  </action>
+  <action name="btnPriceSystem">
+   <property name="text">
+    <string>تعیین قیمت هر ساعت</string>
+   </property>
+  </action>
+  <action name="btnPriceSnack">
+   <property name="text">
+    <string>تعیین قیمت خوراکی</string>
+   </property>
+  </action>
+  <action name="btnSystemList">
+   <property name="text">
+    <string>لیست سیستم ها</string>
+   </property>
+   <property name="font">
+    <font>
+     <family>B Nazanin</family>
+     <pointsize>11</pointsize>
+     <bold>true</bold>
+    </font>
+   </property>
+  </action>
+  <action name="actionbk_bdsj_dsf">
+   <property name="text">
+    <string>bk,bdsj dsf </string>
+   </property>
+  </action>
+  <action name="action">
+   <property name="text">
+    <string>نوا خانم</string>
+   </property>
+  </action>
+  <action name="btnUsername">
+   <property name="text">
+    <string>پنل کاربری</string>
+   </property>
+   <property name="font">
+    <font>
+     <family>B Nazanin</family>
+     <pointsize>11</pointsize>
+     <bold>true</bold>
+    </font>
+   </property>
+  </action>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>
