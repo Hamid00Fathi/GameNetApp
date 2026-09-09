@@ -60,17 +60,26 @@ class MainWindow(QMainWindow):
 
 
         self.username = None
+        self.gamenet_password = None
 
-        # تلاش برای خواندن یوزرنیم از فایل
+        # تلاش برای خواندن یوزرنیم و پسورد از فایل credentials.txt
         try:
-            with open("username.txt", "r", encoding="utf-8") as f:
-                self.username = f.read().strip()
-        except:
-            pass
+            with open("credentials.txt", "r", encoding="utf-8") as f:
+                lines = f.read().splitlines()
+                for line in lines:
+                    if line.startswith("username="):
+                        self.username = line.split("=", 1)[1].strip()
+                    elif line.startswith("password="):
+                        self.gamenet_password = line.split("=", 1)[1].strip()
+        except Exception as e:
+            print("خطا در خواندن credentials.txt:", e)
 
         # اگر یوزرنیم وجود داشت → تایمر ارسال را همینجا روشن کن
-        if self.username:
+        if self.username and self.gamenet_password:
+            print("🔄 تایمر ارسال فعال شد")
             self.start_sender_timer()
+        else:
+            print("❌ یوزرنیم یا پسورد پیدا نشد، ارسال غیرفعال شد")
 
 
 
@@ -78,13 +87,21 @@ class MainWindow(QMainWindow):
 
 
     def send_update(self):
-        if not hasattr(self, "username"):
+        if not hasattr(self, "username") or not hasattr(self, "gamenet_password"):
+            print("❌ یوزرنیم یا پسورد گیم‌نت تنظیم نشده")
             return
 
-        data = self.build_status_json()
+        systems_json = self.build_status_json()
+
+        payload = {
+            "password": self.gamenet_password,
+            "systems": systems_json,
+            "lastUpdate": datetime.now().strftime("%Y-%m-%d %H:%M:%S")   # 🔥 زمان واقعی
+        }
+
         url = f"https://gamenet-server-mongo.onrender.com/status/{self.username}"
 
-        self.thread = SenderThread(url, data)
+        self.thread = SenderThread(url, payload)
         self.thread.finished.connect(lambda r: print("نتیجه ارسال:", r))
         self.thread.start()
 
@@ -1117,7 +1134,7 @@ class MainWindow(QMainWindow):
     def open_user_name(self):
         dlg = SelectUsernameWindow()
         dlg.main_window = self
-        dlg.load_saved_username()
+        dlg.load_saved_credentials()
         dlg.exec()
 
 
