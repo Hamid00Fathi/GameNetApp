@@ -1,14 +1,29 @@
-from PyQt6.QtWidgets import (
-    QApplication, QMessageBox, QDialog, QVBoxLayout,
-    QLabel, QLineEdit, QPushButton
-)
+from PyQt6.QtWidgets import QApplication, QMessageBox, QDialog, QVBoxLayout,QLabel, QLineEdit, QPushButton
+import datetime
 from windows.main_window import MainWindow
 from database import create_tables
 import requests
 import sys
 import os
+from datetime import datetime
+import jdatetime
 
 
+def get_today_gregorian():
+    # تاریخ میلادی سیستم
+    g_now = datetime.now()
+
+    # تاریخ شمسی سیستم
+    j_now = jdatetime.datetime.now()
+
+    # اگر سال شمسی با میلادی فرق داشت → سیستم شمسی است
+    if j_now.year != g_now.year:
+        # سیستم شمسی است → تاریخ شمسی را به میلادی تبدیل کن
+        return j_now.togregorian()
+    else:
+        # سیستم میلادی است → همان میلادی را برگردان
+        return g_now
+    
 # ---------------------------------------------------------
 # چک اشتراک از سرور (سازگار با API فعلی)
 # ---------------------------------------------------------
@@ -17,33 +32,41 @@ def check_subscription(username):
         url = f"https://gamenet-server-mongo.onrender.com/subscription/{username}"
         r = requests.get(url, timeout=5)
 
-        # تلاش برای تبدیل به JSON
         try:
             data = r.json()
         except:
-            return "error"
+            return "error", None, None
 
-        # اگر پاسخ JSON نبود
         if not isinstance(data, dict):
-            return "error"
+            return "error", None, None
 
-        # اگر expireDate=null → اشتراک ندارد
-        if data.get("expireDate") is None:
-            return "inactive"
+        expire_date = data.get("expireDate")
+        active = data.get("active")
 
-        # اگر active=false → اشتراک غیرفعال
-        if data.get("active") is False:
-            return "inactive"
+        if expire_date is None:
+            return "inactive", None, 0
 
-        # اگر active=true → اشتراک فعال
-        if data.get("active") is True:
-            return "active"
+        # تاریخ پایان اشتراک (میلادی)
+        expire_dt = datetime.strptime(expire_date, "%Y-%m-%d")
 
-        return "error"
+        # تاریخ امروز (تشخیص شمسی/میلادی → تبدیل به میلادی)
+        today = get_today_gregorian()
+
+        # اختلاف روز
+        delta = expire_dt - today
+        days_left = delta.days + 1
+
+        if active is False:
+            return "inactive", expire_date, days_left
+
+        if active is True:
+            return "active", expire_date, days_left
+
+        return "error", None, None
 
     except Exception as e:
         print("خطا در چک اشتراک:", e)
-        return "error"
+        return "error", None, None
 
 
 # ---------------------------------------------------------
@@ -84,7 +107,7 @@ def save_credentials(username, password):
 # ---------------------------------------------------------
 class LoginWindow(QDialog):
     def __init__(self):
-        super().__init__()
+        super().__init()
         self.setWindowTitle("ورود به نرم‌افزار گیم‌نت")
         self.resize(300, 150)
 
@@ -133,7 +156,7 @@ if not username or not password:
         sys.exit()
 
     # چک اشتراک
-    status = check_subscription(username)
+    status , expire_date , days_left = check_subscription(username)
 
     if status == "inactive":
         QMessageBox.critical(None, "خطا", "اشتراک شما فعال نیست یا ثبت نشده است.")
@@ -149,7 +172,7 @@ else:
     # ---------------------------------------------------------
     # اگر credentials.txt وجود داشت → چک اشتراک
     # ---------------------------------------------------------
-    status = check_subscription(username)
+    status , expire_date , days_left = check_subscription(username)
 
     if status == "inactive":
         QMessageBox.critical(None, "خطا", "اشتراک شما فعال نیست یا ثبت نشده است.")
@@ -170,4 +193,7 @@ except Exception as e:
     sys.exit()
 
 window.show()
+
+window.lblSubscriptionInfo.setText(f"مانده اشتراک: {days_left} روز | پایان: {expire_date}")
+
 sys.exit(app.exec())

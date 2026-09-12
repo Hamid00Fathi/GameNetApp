@@ -2,6 +2,7 @@ from PyQt6 import uic
 from PyQt6.QtWidgets import QWidget , QTableWidgetItem , QPushButton , QHBoxLayout , QInputDialog , QMessageBox
 from system_repository import get_all_systems , get_system_by_id , update_system , add_system , system_name_exists , remove_system
 from PyQt6.QtCore import Qt
+import re
 
 class System_List(QWidget):
     def __init__(self):
@@ -39,6 +40,7 @@ class System_List(QWidget):
 
     def load_systems(self):
         systems = get_all_systems()
+        systems.sort(key=lambda s: (re.sub(r'\d+', '', s[1]).strip().lower(), int(re.findall(r'\d+', s[1])[0])))
 
         self.systemTable.setRowCount(len(systems))
         self.systemTable.setColumnCount(4)

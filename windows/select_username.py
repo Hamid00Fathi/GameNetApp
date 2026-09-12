@@ -24,8 +24,8 @@ class SelectUsernameWindow(QDialog):
             with open("credentials.txt", "r", encoding="utf-8") as f:
                 lines = f.read().split("\n")
                 if len(lines) >= 2:
-                    self.username = lines[0].strip()
-                    self.password = lines[1].strip()
+                    self.username = lines[0].split("=")[1].strip()
+                    self.password = lines[1].split("=")[1].strip()
 
             if self.username:
                 self.txtUsername.setText(self.username)

@@ -14,9 +14,9 @@ from windows.new_snack import NewSnackWindow
 from windows.snack_list import SnackListWindow
 from windows.system_list import System_List
 from windows.select_username import SelectUsernameWindow
-import sqlite3
 from datetime import datetime
-
+import sqlite3
+import re
 
 
 class SenderThread(QThread):
@@ -54,6 +54,17 @@ class MainWindow(QMainWindow):
         self.btnSystemList.triggered.connect(self.open_system_list)
         self.btnUsername.triggered.connect(self.open_user_name)
 
+        # ساخت لیبل‌های پایین صفحه
+        self.lblSubscriptionInfo = QLabel("اشتراک: ---")
+        self.lblSubscriptionInfo.setStyleSheet("font-size: 15px; color: #444; padding: 5px;")
+
+        self.lblLastUpdate = QLabel("آخرین آپدیت: ---")
+        self.lblLastUpdate.setStyleSheet("font-size: 15px; color: #444; padding: 5px;")
+
+        # اضافه کردن لیبل‌ها به statusbar
+        self.statusbar.addPermanentWidget(self.lblSubscriptionInfo)
+        self.statusbar.addPermanentWidget(self.lblLastUpdate)
+
         self.timer = QTimer()
         self.timer.timeout.connect(self.load_systems)
         self.timer.start(1000)
@@ -61,6 +72,9 @@ class MainWindow(QMainWindow):
 
         self.username = None
         self.gamenet_password = None
+
+
+
 
         # تلاش برای خواندن یوزرنیم و پسورد از فایل credentials.txt
         try:
@@ -76,10 +90,8 @@ class MainWindow(QMainWindow):
 
         # اگر یوزرنیم وجود داشت → تایمر ارسال را همینجا روشن کن
         if self.username and self.gamenet_password:
-            print("🔄 تایمر ارسال فعال شد")
             self.start_sender_timer()
-        else:
-            print("❌ یوزرنیم یا پسورد پیدا نشد، ارسال غیرفعال شد")
+
 
 
 
@@ -93,17 +105,22 @@ class MainWindow(QMainWindow):
 
         systems_json = self.build_status_json()
 
+        last_update = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
         payload = {
             "password": self.gamenet_password,
             "systems": systems_json,
-            "lastUpdate": datetime.now().strftime("%Y-%m-%d %H:%M:%S")   # 🔥 زمان واقعی
+            "lastUpdate": last_update   # 🔥 زمان واقعی
         }
+
+        self.lblLastUpdate.setText(f"آخرین آپدیت: {last_update}")
 
         url = f"https://gamenet-server-mongo.onrender.com/status/{self.username}"
 
         self.thread = SenderThread(url, payload)
         self.thread.finished.connect(lambda r: print("نتیجه ارسال:", r))
         self.thread.start()
+
 
     def build_status_json(self):
         conn = sqlite3.connect("gamenet.db")
@@ -156,7 +173,6 @@ class MainWindow(QMainWindow):
                 s = elapsed_seconds % 60
                 elapsed = f"{h:02}:{m:02}:{s:02}"
 
-                # هزینه زمان
                 time_cost = int(elapsed_seconds * (price_per_hour / 3600))
 
             else:
@@ -180,10 +196,10 @@ class MainWindow(QMainWindow):
                     snacks.append({"name": n, "price": p, "qty": q})
                     snacks_total += p * q
 
-            # هزینه نهایی
             final_total = time_cost + snacks_total
 
-            data[f"system{sys_id}"] = {
+            # ⭐ فقط همین بخش تغییر کرده ⭐
+            data[name] = {
                 "name": name,
                 "active": active,
                 "elapsed": elapsed,
@@ -254,9 +270,9 @@ class MainWindow(QMainWindow):
     def status_item(self , active):
         item = QTableWidgetItem("")
         if active == 0:
-            item.setBackground(QColor("#51E22D"))
-        elif active == 1:
             item.setBackground(QColor("#FF3030"))
+        elif active == 1:
+            item.setBackground(QColor("#51E22D"))
         else:
             item.setBackground(QColor("#2A7AE4"))
 
@@ -277,7 +293,7 @@ class MainWindow(QMainWindow):
         # 2) گرفتن سیستم‌ها
         systems = get_systems()
         self.systemTable.setRowCount(len(systems))
-        systems.sort(key=lambda s: s[1])
+        systems.sort(key=lambda s: (re.sub(r'\d+', '', s[1]).strip().lower(), int(re.findall(r'\d+', s[1])[0])))
 
         # 3) نمایش جدول
         conn = sqlite3.connect("gamenet.db")
@@ -328,7 +344,7 @@ class MainWindow(QMainWindow):
 
 
             self.systemTable.setCellWidget(row, 7, start_btn)
-            self.systemTable.setColumnWidth(7, 110)
+            self.systemTable.setColumnWidth(7, 80)
 
             # دکمه استاپ
             stop_btn = QPushButton()
@@ -337,7 +353,7 @@ class MainWindow(QMainWindow):
             stop_btn.setStyleSheet("border: none;")
             stop_btn.clicked.connect(lambda _, sid=sys_id: self.stop_system(sid))
             self.systemTable.setCellWidget(row, 6, stop_btn)
-            self.systemTable.setColumnWidth(6, 110)
+            self.systemTable.setColumnWidth(6, 80)
 
             # دکمه تغییر سیستم
             change_btn = QPushButton()

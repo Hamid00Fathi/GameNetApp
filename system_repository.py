@@ -25,7 +25,7 @@ def get_all_systems():
     conn = get_connection()
     cursor = conn.cursor()
 
-    cursor.execute("SELECT id, name , price_per_hour FROM systems ORDER BY name ASC")
+    cursor.execute("SELECT id, name , price_per_hour FROM systems ORDER BY CAST(substr(name, 3) as INTEGER) ASC")
     systems = cursor.fetchall()
 
     conn.close()
