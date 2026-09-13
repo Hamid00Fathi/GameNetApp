@@ -29,7 +29,7 @@ def get_today_gregorian():
 # ---------------------------------------------------------
 def check_subscription(username):
     try:
-        url = f"https://gamenet-server-mongo.onrender.com/subscription/{username}"
+        url = f"https://gamenet-server-mongo-production.up.railway.app/subscription/{username}"
         r = requests.get(url, timeout=5)
 
         try:

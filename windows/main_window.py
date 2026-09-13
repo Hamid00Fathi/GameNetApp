@@ -115,7 +115,7 @@ class MainWindow(QMainWindow):
 
         self.lblLastUpdate.setText(f"آخرین آپدیت: {last_update}")
 
-        url = f"https://gamenet-server-mongo.onrender.com/status/{self.username}"
+        url = f"https://gamenet-server-mongo-production.up.railway.app/status/{self.username}"
 
         self.thread = SenderThread(url, payload)
         self.thread.finished.connect(lambda r: print("نتیجه ارسال:", r))
