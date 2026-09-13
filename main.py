@@ -107,7 +107,7 @@ def save_credentials(username, password):
 # ---------------------------------------------------------
 class LoginWindow(QDialog):
     def __init__(self):
-        super().__init()
+        super().__init__()
         self.setWindowTitle("ورود به نرم‌افزار گیم‌نت")
         self.resize(300, 150)
 
