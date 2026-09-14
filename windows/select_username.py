@@ -81,7 +81,7 @@ class SelectUsernameWindow(QDialog):
             QMessageBox.warning(self, "خطا", "ابتدا یوزرنیم را ذخیره کنید.")
             return
 
-        link = f"https://gamenet-server-mongo-production.up.railway.app/login.html"
+        link = f"https://gamenet-web.onrender.com/login.html"
 
         QInputDialog.getText(
             self,
