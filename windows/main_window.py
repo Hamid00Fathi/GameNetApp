@@ -3,7 +3,6 @@ from PyQt6.QtWidgets import *
 from PyQt6.QtGui import QIcon , QColor
 from PyQt6.QtCore import QTimer , Qt , QSize , QThread , pyqtSignal , QSettings
 from database import get_systems
-from windows.remove_system import RemoveSystemWindow
 from windows.add_system import AddSystemWindow
 from windows.add_snack_to_system import AddSnackToSystem
 from windows.charge_customer import ChargeCustomerWindow
@@ -17,6 +16,8 @@ from windows.select_username import SelectUsernameWindow
 from datetime import datetime
 import sqlite3 , requests
 import re
+from main import extract_ui_files
+
 
 
 class SenderThread(QThread):
@@ -58,7 +59,8 @@ class MainWindow(QMainWindow):
 
     def __init__(self):
         super().__init__()
-        uic.loadUi("ui/main_window.ui", self)
+        extract_ui_files()
+        uic.loadUi("main_window.ui", self)
 
         self.subscription_expired = False
 

@@ -8,7 +8,7 @@ class DeleteSnackWindow(QWidget):
 
     def __init__(self):
         super().__init__()
-        uic.loadUi("ui/delete_snack.ui" , self)
+        uic.loadUi("delete_snack.ui" , self)
 
 
         self.load_snacks()

@@ -8,7 +8,7 @@ class NewSnackWindow(QWidget):
     snack_added = pyqtSignal()
     def __init__(self):
         super().__init__()
-        uic.loadUi("ui/new_snack.ui" , self)
+        uic.loadUi("new_snack.ui" , self)
 
         
         self.saveBtn.clicked.connect(self.save_snack)

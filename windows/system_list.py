@@ -7,7 +7,7 @@ import re
 class System_List(QWidget):
     def __init__(self):
         super().__init__()
-        uic.loadUi("ui/system_list.ui" , self)
+        uic.loadUi("system_list.ui" , self)
 
         self.addButton.clicked.connect(self.add_systems)
 

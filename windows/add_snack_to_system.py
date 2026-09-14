@@ -6,7 +6,7 @@ from PyQt6.QtCore import Qt
 class AddSnackToSystem(QWidget):
     def __init__(self, system_id):
         super().__init__()
-        uic.loadUi("ui/add_snack_to_system.ui", self)
+        uic.loadUi("add_snack_to_system.ui", self)
 
 
 

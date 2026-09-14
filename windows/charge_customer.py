@@ -7,7 +7,7 @@ from PyQt6.QtCore import Qt
 class ChargeCustomerWindow(QWidget):
     def __init__(self):
         super().__init__()
-        uic.loadUi("ui/charge_customer.ui" , self)
+        uic.loadUi("charge_customer.ui" , self)
 
         self.load_customers()
         self.chargeButton.clicked.connect(self.do_charge)
