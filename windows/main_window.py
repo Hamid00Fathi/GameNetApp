@@ -1,7 +1,7 @@
 from PyQt6 import uic
-from PyQt6.QtWidgets import QMainWindow , QLabel , QTableWidgetItem , QPushButton , QMessageBox , QDialog , QVBoxLayout , QComboBox , QLineEdit , QRadioButton , QCompleter , QTextEdit
+from PyQt6.QtWidgets import *
 from PyQt6.QtGui import QIcon , QColor
-from PyQt6.QtCore import QTimer , Qt , QSize , QThread , pyqtSignal
+from PyQt6.QtCore import QTimer , Qt , QSize , QThread , pyqtSignal , QSettings
 from database import get_systems
 from windows.remove_system import RemoveSystemWindow
 from windows.add_system import AddSystemWindow
@@ -15,7 +15,7 @@ from windows.snack_list import SnackListWindow
 from windows.system_list import System_List
 from windows.select_username import SelectUsernameWindow
 from datetime import datetime
-import sqlite3
+import sqlite3 , requests
 import re
 
 
@@ -35,11 +35,34 @@ class SenderThread(QThread):
         except Exception as e:
             self.finished.emit(f"خطا: {e}")
 
+
+class SubscriptionChecker(QThread):
+    result = pyqtSignal(dict)
+    error = pyqtSignal(str)
+
+    def __init__(self, username):
+        super().__init__()
+        self.username = username
+
+    def run(self):
+        try:
+            url = f"https://gamenet-server-mongo-production.up.railway.app/subscription/{self.username}"
+            res = requests.get(url, timeout=6)
+            data = res.json()
+            self.result.emit(data)
+        except Exception as e:
+            self.error.emit(str(e))
+
+
 class MainWindow(QMainWindow):
 
     def __init__(self):
         super().__init__()
         uic.loadUi("ui/main_window.ui", self)
+
+        self.subscription_expired = False
+
+        self.settings = QSettings("GameNetApp", "MainWindow")
 
         self.detect_power_loss()
 
@@ -69,11 +92,8 @@ class MainWindow(QMainWindow):
         self.timer.timeout.connect(self.load_systems)
         self.timer.start(1000)
 
-
         self.username = None
         self.gamenet_password = None
-
-
 
 
         # تلاش برای خواندن یوزرنیم و پسورد از فایل credentials.txt
@@ -92,11 +112,49 @@ class MainWindow(QMainWindow):
         if self.username and self.gamenet_password:
             self.start_sender_timer()
 
+        self.subscription_timer = QTimer()
+        self.subscription_timer.timeout.connect(self.start_subscription_check)
+        self.subscription_timer.start(10000)  # هر ۱ ساعت
 
+        # چک اولیه هنگام اجرا
+        self.start_subscription_check()
 
 
         self.load_systems()
 
+
+    def lock_software(self):
+        try:
+            QMessageBox.critical(
+                self,
+                "اشتراک منقضی شده",
+                "اشتراک شما منقضی شده است.\nنرم‌افزار بسته می‌شود."
+            )
+
+            QApplication.quit()
+
+        except Exception as e:
+            print("خطا در قفل نرم‌افزار:", e)
+
+    def handle_subscription_error(self, err):
+        print("خطا در چک اشتراک:", err)
+        # اینترنت قطع باشد → نرم‌افزار قفل نمی‌شود
+
+    def handle_subscription_result(self, data):
+        active = data.get("active", False)
+
+        if not active:
+            self.subscription_expired = True
+            self.lock_software()
+
+    def start_subscription_check(self):
+        if not self.username:
+            return
+
+        self.sub_checker = SubscriptionChecker(self.username)
+        self.sub_checker.result.connect(self.handle_subscription_result)
+        self.sub_checker.error.connect(self.handle_subscription_error)
+        self.sub_checker.start()
 
     def send_update(self):
         if not hasattr(self, "username") or not hasattr(self, "gamenet_password"):
@@ -110,7 +168,7 @@ class MainWindow(QMainWindow):
         payload = {
             "password": self.gamenet_password,
             "systems": systems_json,
-            "lastUpdate": last_update   # 🔥 زمان واقعی
+            "lastUpdate": last_update
         }
 
         self.lblLastUpdate.setText(f"آخرین آپدیت: {last_update}")
@@ -121,20 +179,19 @@ class MainWindow(QMainWindow):
         self.thread.finished.connect(lambda r: print("نتیجه ارسال:", r))
         self.thread.start()
 
-
     def build_status_json(self):
         conn = sqlite3.connect("gamenet.db")
         cur = conn.cursor()
 
         cur.execute("""
-            SELECT id, name, active, note, customer_id, price_per_hour
+            SELECT id, name, active, note, customer_id, price_per_hour, cost
             FROM systems
         """)
         rows = cur.fetchall()
 
         data = {}
 
-        for sys_id, name, active, note, customer_id, price_per_hour in rows:
+        for sys_id, name, active, note, customer_id, price_per_hour, transfer_cost in rows:
 
             # مشتری
             if customer_id:
@@ -196,9 +253,9 @@ class MainWindow(QMainWindow):
                     snacks.append({"name": n, "price": p, "qty": q})
                     snacks_total += p * q
 
-            final_total = time_cost + snacks_total
+            final_total = time_cost + snacks_total + transfer_cost
 
-            # ⭐ فقط همین بخش تغییر کرده ⭐
+            # ⭐ اضافه کردن هزینه سیستم قبلی ⭐
             data[name] = {
                 "name": name,
                 "active": active,
@@ -206,6 +263,7 @@ class MainWindow(QMainWindow):
                 "time_cost": time_cost,
                 "snacks": snacks,
                 "snacks_total": snacks_total,
+                "transfer_cost": transfer_cost,   # ← این خط جدید
                 "final_total": final_total,
                 "note": note,
                 "customer": customer_info,
@@ -828,6 +886,8 @@ class MainWindow(QMainWindow):
 
         # فعال کردن سیستم جدید + انتقال نوت
         cur.execute("UPDATE systems SET active=1, customer_id=?, note=? WHERE id=?", (customer_id, old_note, new_sys_id))
+
+        self.send_update()
 
         conn.commit()
         conn.close()
