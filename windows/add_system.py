@@ -6,7 +6,7 @@ from system_repository import add_system , system_name_exists
 class AddSystemWindow(QWidget):
     def __init__(self):
         super().__init__()
-        uic.loadUi("add_system.ui" , self)
+        uic.loadUi("ui/add_system.ui" , self)
 
         self.addButton.clicked.connect(self.save_system)
 

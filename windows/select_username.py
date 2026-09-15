@@ -5,7 +5,7 @@ import os
 class SelectUsernameWindow(QDialog):
     def __init__(self):
         super().__init__()
-        uic.loadUi("select_username.ui", self)
+        uic.loadUi("ui/select_username.ui", self)
 
         self.username = None
         self.password = None

@@ -7,35 +7,7 @@ import sys
 import os
 from datetime import datetime
 import jdatetime
-import zipfile
-import tempfile
-from PyQt6 import uic
-import shutil
 
-# مسیر فایل ZIP رمزدار
-UI_ZIP_PATH = "ui.zip"
-
-# رمز فایل ZIP
-UI_PASSWORD = b"Hamid9230!"   # رمز را اینجا بگذار (باید بایت باشد)
-
-# پوشه موقت برای استخراج فایل‌های UI
-temp_dir = tempfile.mkdtemp()
-ui_extract_path = os.path.join(temp_dir, "ui")
-
-def extract_ui_files():
-    """استخراج فایل‌های UI از ZIP رمزدار به پوشه موقت"""
-    os.makedirs(ui_extract_path, exist_ok=True)
-
-    with zipfile.ZipFile(UI_ZIP_PATH, 'r') as zip_ref:
-        zip_ref.extractall(ui_extract_path, pwd=UI_PASSWORD)
-
-def load_ui(ui_filename, widget):
-    """لود کردن فایل UI از پوشه استخراج‌شده"""
-    ui_path = os.path.join(ui_extract_path, ui_filename)
-    uic.loadUi(ui_path, widget)
-
-def cleanup_ui():
-    shutil.rmtree(ui_extract_path, ignore_errors=True)
 
 def get_today_gregorian():
     # تاریخ میلادی سیستم
@@ -211,6 +183,8 @@ else:
         sys.exit()
 
 
+
+
 # ---------------------------------------------------------
 # اجرای نرم‌افزار اصلی
 # ---------------------------------------------------------
@@ -227,7 +201,5 @@ window.lblSubscriptionInfo.setText(f"مانده اشتراک: {days_left} روز
 # اجرای برنامه
 exit_code = app.exec()
 
-# ⭐ پاک کردن فایل‌های استخراج‌شده بعد از بسته شدن برنامه
-cleanup_ui()
 
 sys.exit(exit_code)

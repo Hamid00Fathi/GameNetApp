@@ -16,7 +16,6 @@ from windows.select_username import SelectUsernameWindow
 from datetime import datetime
 import sqlite3 , requests
 import re
-from main import extract_ui_files
 
 
 
@@ -59,8 +58,7 @@ class MainWindow(QMainWindow):
 
     def __init__(self):
         super().__init__()
-        extract_ui_files()
-        uic.loadUi("main_window.ui", self)
+        uic.loadUi("ui/main_window.ui", self)
 
         self.subscription_expired = False
 
@@ -69,7 +67,6 @@ class MainWindow(QMainWindow):
         self.detect_power_loss()
 
         self.btnAddSystem.triggered.connect(self.open_add_system)
-        self.btnRemoveSystem.triggered.connect(self.open_remove_system)
         self.btnAddCustomer.triggered.connect(self.open_add_customer)
         self.btnChargeCustomer.triggered.connect(self.open_chgarge_customer)
         self.btnCustomerList.triggered.connect(self.open_customer_list)
@@ -1169,10 +1166,6 @@ class MainWindow(QMainWindow):
     def open_add_system(self):
         self.addSystem = AddSystemWindow()
         self.addSystem.show()
-
-    def open_remove_system(self):
-        self.removeSystem = RemoveSystemWindow()
-        self.removeSystem.show()
 
 
     def open_add_customer(self):

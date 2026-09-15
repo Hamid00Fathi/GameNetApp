@@ -6,7 +6,7 @@ import sqlite3
 class SnackListWindow(QWidget):
     def __init__(self):
         super().__init__()
-        uic.loadUi("snack_list.ui", self)
+        uic.loadUi("ui/snack_list.ui", self)
 
         self.addButton.clicked.connect(self.add_snack)
         self.searchInput.textChanged.connect(self.search_snacks)
