@@ -6,7 +6,13 @@ import sqlite3
 class SnackListWindow(QWidget):
     def __init__(self):
         super().__init__()
-        uic.loadUi("ui/snack_list.ui", self)
+        import sys, os
+        if getattr(sys, 'frozen', False):
+            base_path = sys._MEIPASS
+        else:
+            base_path = os.path.dirname(__file__)
+
+        uic.loadUi(os.path.join(base_path, "ui", "snack_list.ui"), self)
 
         self.addButton.clicked.connect(self.add_snack)
         self.searchInput.textChanged.connect(self.search_snacks)

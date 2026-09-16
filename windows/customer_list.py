@@ -7,7 +7,14 @@ from PyQt6.QtGui import QColor
 class CustomerListWindow(QWidget):
     def __init__(self):
         super().__init__()
-        uic.loadUi("ui/customer_list.ui", self)
+        import sys, os
+        if getattr(sys, 'frozen', False):
+            base_path = sys._MEIPASS
+        else:
+            base_path = os.path.dirname(__file__)
+
+        uic.loadUi(os.path.join(base_path, "ui", "customer_list.ui"), self)
+
 
         self.customerTable.verticalHeader().setVisible(False)
 

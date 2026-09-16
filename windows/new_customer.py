@@ -5,7 +5,14 @@ from customer_repository import add_customer
 class NewCustomerWindow(QWidget):
     def __init__(self):
         super().__init__()
-        uic.loadUi("ui/new_customer.ui" , self)
+        import sys, os
+        if getattr(sys, 'frozen', False):
+            base_path = sys._MEIPASS
+        else:
+            base_path = os.path.dirname(__file__)
+
+        uic.loadUi(os.path.join(base_path, "ui", "new_customer.ui"), self)
+
         self.submit_btn.clicked.connect(self.save_customer)
         self.balanceCheckBox.stateChanged.connect(self.toggle_balance)
 

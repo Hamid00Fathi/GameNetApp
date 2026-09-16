@@ -6,7 +6,14 @@ from system_repository import add_system , system_name_exists
 class AddSystemWindow(QWidget):
     def __init__(self):
         super().__init__()
-        uic.loadUi("ui/add_system.ui" , self)
+        import sys, os
+        if getattr(sys, 'frozen', False):
+            base_path = sys._MEIPASS
+        else:
+            base_path = os.path.dirname(__file__)
+
+        uic.loadUi(os.path.join(base_path, "ui", "add_system.ui"), self)
+
 
         self.addButton.clicked.connect(self.save_system)
 

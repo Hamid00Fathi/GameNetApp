@@ -16,7 +16,7 @@ from windows.select_username import SelectUsernameWindow
 from datetime import datetime
 import sqlite3 , requests
 import re
-
+import sys, os
 
 
 class SenderThread(QThread):
@@ -58,7 +58,14 @@ class MainWindow(QMainWindow):
 
     def __init__(self):
         super().__init__()
-        uic.loadUi("ui/main_window.ui", self)
+
+        if getattr(sys, 'frozen', False):
+            base_path = sys._MEIPASS
+        else:
+            base_path = os.path.dirname(__file__)
+
+        uic.loadUi(os.path.join(base_path, "ui", "main_window.ui"), self)
+
 
         self.subscription_expired = False
 
@@ -361,9 +368,14 @@ class MainWindow(QMainWindow):
         for row, sys in enumerate(systems):
             sys_id, name, active, start_time, elapsed, cost , custoer_id , note = sys
 
+            if getattr(sys, 'frozen', False):
+                base_path = sys._MEIPASS
+            else:
+                base_path = os.path.dirname(__file__)
+
             # یادداشت
             note_btn = QPushButton()
-            note_btn.setIcon(QIcon("icons/note.png"))
+            note_btn.setIcon(QIcon(os.path.join(base_path, "icons", "note.png")))
             note_btn.setIconSize(QSize(25, 25))
             note_btn.setStyleSheet("border: none;")
             note_btn.clicked.connect(lambda _, sid=sys_id: self.note_system(sid))
@@ -388,7 +400,7 @@ class MainWindow(QMainWindow):
 
             # دکمه استارت
             start_btn = QPushButton()
-            start_btn.setIcon(QIcon("icons/start.png"))
+            start_btn.setIcon(QIcon(os.path.join(base_path, "icons", "start.png")))
             start_btn.setIconSize(QSize(25, 25))
             start_btn.setStyleSheet("border: none;")
             start_btn.clicked.connect(lambda _, sid=sys_id: self.start_system(sid))
@@ -405,7 +417,7 @@ class MainWindow(QMainWindow):
 
             # دکمه استاپ
             stop_btn = QPushButton()
-            stop_btn.setIcon(QIcon("icons/stop.png"))
+            stop_btn.setIcon(QIcon(os.path.join(base_path, "icons", "stop.png")))
             stop_btn.setIconSize(QSize(28, 28))
             stop_btn.setStyleSheet("border: none;")
             stop_btn.clicked.connect(lambda _, sid=sys_id: self.stop_system(sid))
@@ -414,7 +426,7 @@ class MainWindow(QMainWindow):
 
             # دکمه تغییر سیستم
             change_btn = QPushButton()
-            change_btn.setIcon(QIcon("icons/edit.png"))
+            change_btn.setIcon(QIcon(os.path.join(base_path, "icons", "edit.png")))
             change_btn.setIconSize(QSize(28, 28))
             change_btn.setStyleSheet("border: none;")
             change_btn.clicked.connect(lambda _, sid=sys_id: self.change_system(sid))
@@ -423,7 +435,7 @@ class MainWindow(QMainWindow):
 
             # دکمه خوراکی
             snack_btn = QPushButton()
-            snack_btn.setIcon(QIcon("icons/snack.png"))
+            snack_btn.setIcon(QIcon(os.path.join(base_path, "icons", "snack.png")))
             snack_btn.setIconSize(QSize(28, 28))
             snack_btn.setStyleSheet("border: none;")
             snack_btn.clicked.connect(lambda _, sid=sys_id: self.add_snack(sid))
@@ -444,7 +456,7 @@ class MainWindow(QMainWindow):
 
             # دکمه تسویه
             checkout_btn = QPushButton()
-            checkout_btn.setIcon(QIcon("icons/checkout.png"))
+            checkout_btn.setIcon(QIcon(os.path.join(base_path, "icons", "checkout.png")))
             checkout_btn.setIconSize(QSize(25, 25))
             checkout_btn.setStyleSheet("border: none;")
             checkout_btn.clicked.connect(lambda _, sid=sys_id: self.checkout(sid))

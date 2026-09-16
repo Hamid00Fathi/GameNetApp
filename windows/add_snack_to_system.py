@@ -6,7 +6,14 @@ from PyQt6.QtCore import Qt
 class AddSnackToSystem(QWidget):
     def __init__(self, system_id):
         super().__init__()
-        uic.loadUi("ui/add_snack_to_system.ui", self)
+        import sys, os
+        if getattr(sys, 'frozen', False):
+            base_path = sys._MEIPASS
+        else:
+            base_path = os.path.dirname(__file__)
+
+        uic.loadUi(os.path.join(base_path, "ui", "add_snack_to_system.ui"), self)
+
 
 
 

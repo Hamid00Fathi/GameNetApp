@@ -7,7 +7,13 @@ from PyQt6.QtCore import Qt
 class ChargeCustomerWindow(QWidget):
     def __init__(self):
         super().__init__()
-        uic.loadUi("ui/charge_customer.ui" , self)
+        import sys, os
+        if getattr(sys, 'frozen', False):
+            base_path = sys._MEIPASS
+        else:
+            base_path = os.path.dirname(__file__)
+
+        uic.loadUi(os.path.join(base_path, "ui", "charge_customer.ui"), self)
 
         self.load_customers()
         self.chargeButton.clicked.connect(self.do_charge)
