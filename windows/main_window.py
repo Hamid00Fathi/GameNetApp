@@ -113,7 +113,7 @@ class MainWindow(QMainWindow):
 
         self.subscription_timer = QTimer()
         self.subscription_timer.timeout.connect(self.start_subscription_check)
-        self.subscription_timer.start(10000)  # هر ۱ ساعت
+        self.subscription_timer.start(3600 * 3000)  # هر ۱ ساعت
 
         # چک اولیه هنگام اجرا
         self.start_subscription_check()
