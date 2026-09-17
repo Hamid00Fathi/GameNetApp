@@ -91,8 +91,8 @@ class MainWindow(QMainWindow):
         # ------------------------------
         # Menu Actions
         # ------------------------------
-        self.actionOnlineMode.triggered.connect(self.switch_to_online)
-        self.actionOfflineMode.triggered.connect(self.switch_to_offline)
+        self.actionOnlineLogin.triggered.connect(self.switch_to_online)
+        self.actionOfflineLogin.triggered.connect(self.switch_to_offline)
         self.actionRenewSubscription.triggered.connect(self.renew_subscription)
         self.actionLogout.triggered.connect(self.logout)
 
