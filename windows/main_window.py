@@ -158,19 +158,22 @@ class MainWindow(QMainWindow):
             os.remove("license.key")
 
         QMessageBox.information(self, "حالت آنلاین", "نرم‌افزار در حالت آنلاین اجرا خواهد شد.")
+
+        exe_path = os.path.abspath(sys.argv[0])
         QCoreApplication.quit()
-        QProcess.startDetached(sys.executable, sys.argv)
+        QProcess.startDetached(exe_path, sys.argv[1:])
 
     def switch_to_offline(self):
-        # ساخت فایل لایسنس ساده برای حالت آفلاین
+        # ذخیره لایسنس
         with open("license.key", "w") as f:
             f.write("OFFLINE-MODE")
 
         QMessageBox.information(self, "حالت آفلاین", "نرم‌افزار در حالت آفلاین اجرا خواهد شد.")
 
-        # ریستارت برنامه
+        # ریستارت صحیح
+        exe_path = os.path.abspath(sys.argv[0])
         QCoreApplication.quit()
-        QProcess.startDetached(sys.executable, sys.argv)
+        QProcess.startDetached(exe_path, sys.argv[1:])
 
     def renew_subscription(self):
         QMessageBox.information(self, "تمدید اشتراک", "صفحه تمدید اشتراک بعداً اضافه می‌شود.")
@@ -215,14 +218,20 @@ class MainWindow(QMainWindow):
     def handle_subscription_result(self, data):
         active = data.get("active", False)
 
-        if active:
-            # نمایش وضعیت در استاتوس‌بار
-            self.lblSubscriptionInfo.setText("اشتراک فعال است")
-        else:
-            # نمایش وضعیت در استاتوس‌بار
-            self.lblSubscriptionInfo.setText("اشتراک منقضی شده")
+        # گرفتن تاریخ
+        expire = data.get("expireDate") or data.get("expire_date") or "نامشخص"
 
-            # قفل نرم‌افزار
+        # گرفتن روز مانده
+        days_left = (
+            data.get("daysLeft") or
+            data.get("days_left") or
+            "نامشخص"
+        )
+
+        if active:
+            self.lblSubscriptionInfo.setText(f"مانده: {days_left} روز | پایان: {expire}")
+        else:
+            self.lblSubscriptionInfo.setText("اشتراک منقضی شده")
             self.subscription_expired = True
             self.lock_software()
 

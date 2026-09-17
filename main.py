@@ -9,6 +9,8 @@ from database import create_tables
 
 API_BASE = "https://gamenet-server-mongo-production.up.railway.app"
 
+mode = "online"
+password = ""
 
 # ---------------------------------------------------------
 # چک لایسنس آفلاین
@@ -122,13 +124,18 @@ class LicenseWindow(QDialog):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("ورود با لایسنس")
-        self.resize(300, 150)
+        self.resize(300, 200)
 
         layout = QVBoxLayout(self)
 
         layout.addWidget(QLabel("نام کاربری:"))
         self.username_input = QLineEdit()
         layout.addWidget(self.username_input)
+
+        layout.addWidget(QLabel("رمز ورود:"))
+        self.password_input = QLineEdit()
+        self.password_input.setEchoMode(QLineEdit.EchoMode.Password)
+        layout.addWidget(self.password_input)
 
         layout.addWidget(QLabel("کلید لایسنس:"))
         self.license_input = QLineEdit()
@@ -139,7 +146,11 @@ class LicenseWindow(QDialog):
         layout.addWidget(btn)
 
     def get_data(self):
-        return self.username_input.text().strip(), self.license_input.text().strip()
+        return (
+            self.username_input.text().strip(),
+            self.password_input.text().strip(),
+            self.license_input.text().strip()
+        )
 
 
 # ---------------------------------------------------------
@@ -149,26 +160,53 @@ class LicenseWindow(QDialog):
 create_tables()
 app = QApplication(sys.argv)
 
-# اگر فایل لایسنس وجود داشت → مستقیم آفلاین
+username = None
+password = ""
+mode = "online"
+
+# ۱) اگر credentials.txt وجود دارد → تلاش برای ورود آنلاین بدون سوال
+if os.path.exists("credentials.txt"):
+    with open("credentials.txt", "r") as f:
+        for line in f.read().splitlines():
+            if line.startswith("username="):
+                username = line.split("=", 1)[1].strip()
+            if line.startswith("password="):
+                password = line.split("=", 1)[1].strip()
+
+    if username:
+        status, expire_date, days_left = check_subscription(username)
+        if status == "active":
+            window = MainWindow(mode="online", username=username)
+            window.gamenet_password = password
+            window.lblSubscriptionInfo.setText(f"مانده اشتراک: {days_left} روز | پایان: {expire_date}")
+            window.show()
+            sys.exit(app.exec())
+        # اگر اشتراک منقضی شده، می‌ریم سراغ انتخاب حالت
+
+# ۲) اگر فایل لایسنس وجود داشت → مستقیم آفلاین
 if os.path.exists("license.key"):
-    # یوزرنیم را از credentials.txt بخوان
+    mode = "offline"
     username = None
+    password = ""
+
     if os.path.exists("credentials.txt"):
         with open("credentials.txt", "r") as f:
             for line in f.read().splitlines():
                 if line.startswith("username="):
                     username = line.split("=", 1)[1].strip()
+                if line.startswith("password="):
+                    password = line.split("=", 1)[1].strip()
 
     if username and check_license_status(username):
-        window = MainWindow(mode="offline", username=username)
+        window = MainWindow(mode=mode, username=username)
+        window.gamenet_password = password
         window.show()
         sys.exit(app.exec())
     else:
         QMessageBox.critical(None, "خطا", "لایسنس معتبر نیست.")
         sys.exit()
 
-
-# اگر لایسنس نبود → پنجره انتخاب حالت
+# ۳) اگر نه credentials معتبر بود، نه لایسنس → پنجره انتخاب حالت
 mode_window = LoginModeWindow()
 choice = mode_window.exec()
 
@@ -194,6 +232,7 @@ if choice == 1:
         f.write(f"password={password}\n")
 
     window = MainWindow(mode="online", username=username)
+    window.gamenet_password = password
     window.lblSubscriptionInfo.setText(f"مانده اشتراک: {days_left} روز | پایان: {expire_date}")
     window.show()
     sys.exit(app.exec())
@@ -207,7 +246,7 @@ if choice == 2:
     if lic_win.exec() != QDialog.DialogCode.Accepted:
         sys.exit()
 
-    username, license_key = lic_win.get_data()
+    username, password, license_key = lic_win.get_data()
 
     # چک لایسنس با سرور
     r = requests.post(f"{API_BASE}/license/verify", json={"username": username, "key": license_key})
@@ -221,11 +260,13 @@ if choice == 2:
     with open("license.key", "w") as f:
         f.write(license_key)
 
-    # ذخیره یوزرنیم
+    # ذخیره یوزرنیم و پسورد
     with open("credentials.txt", "w") as f:
         f.write(f"username={username}\n")
+        f.write(f"password={password}\n")
 
     window = MainWindow(mode="offline", username=username)
+    window.gamenet_password = password
     window.lblSubscriptionInfo.setText("حالت آفلاین فعال است")
     window.show()
     sys.exit(app.exec())
