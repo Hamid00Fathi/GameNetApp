@@ -1,7 +1,7 @@
 from PyQt6 import uic
 from PyQt6.QtWidgets import *
 from PyQt6.QtGui import QIcon , QColor
-from PyQt6.QtCore import QTimer , Qt , QSize , QThread , pyqtSignal , QSettings
+from PyQt6.QtCore import *
 from database import get_systems
 from windows.add_system import AddSystemWindow
 from windows.add_snack_to_system import AddSnackToSystem
@@ -56,9 +56,12 @@ class SubscriptionChecker(QThread):
 
 class MainWindow(QMainWindow):
 
-    def __init__(self):
+    def __init__(self, mode="online", username=None):
         super().__init__()
 
+        # ------------------------------
+        # Load UI
+        # ------------------------------
         if getattr(sys, 'frozen', False):
             base_path = sys._MEIPASS
         else:
@@ -66,13 +69,36 @@ class MainWindow(QMainWindow):
 
         uic.loadUi(os.path.join(base_path, "ui", "main_window.ui"), self)
 
+        # ------------------------------
+        # Mode & Username
+        # ------------------------------
+        self.mode = mode              # online / offline
+        self.username = username
+        self.send_data_online = (mode == "online")
 
-        self.subscription_expired = False
+        # ------------------------------
+        # Statusbar Labels
+        # ------------------------------
+        self.lblSubscriptionInfo = QLabel("اشتراک: ---")
+        self.lblSubscriptionInfo.setStyleSheet("font-size: 15px; color: #444; padding: 5px;")
 
-        self.settings = QSettings("GameNetApp", "MainWindow")
+        self.lblLastUpdate = QLabel("آخرین آپدیت: ---")
+        self.lblLastUpdate.setStyleSheet("font-size: 15px; color: #444; padding: 5px;")
 
-        self.detect_power_loss()
+        self.statusbar.addPermanentWidget(self.lblSubscriptionInfo)
+        self.statusbar.addPermanentWidget(self.lblLastUpdate)
 
+        # ------------------------------
+        # Menu Actions
+        # ------------------------------
+        self.actionOnlineMode.triggered.connect(self.switch_to_online)
+        self.actionOfflineMode.triggered.connect(self.switch_to_offline)
+        self.actionRenewSubscription.triggered.connect(self.renew_subscription)
+        self.actionLogout.triggered.connect(self.logout)
+
+        # ------------------------------
+        # Buttons
+        # ------------------------------
         self.btnAddSystem.triggered.connect(self.open_add_system)
         self.btnAddCustomer.triggered.connect(self.open_add_customer)
         self.btnChargeCustomer.triggered.connect(self.open_chgarge_customer)
@@ -83,50 +109,90 @@ class MainWindow(QMainWindow):
         self.btnSystemList.triggered.connect(self.open_system_list)
         self.btnUsername.triggered.connect(self.open_user_name)
 
-        # ساخت لیبل‌های پایین صفحه
-        self.lblSubscriptionInfo = QLabel("اشتراک: ---")
-        self.lblSubscriptionInfo.setStyleSheet("font-size: 15px; color: #444; padding: 5px;")
-
-        self.lblLastUpdate = QLabel("آخرین آپدیت: ---")
-        self.lblLastUpdate.setStyleSheet("font-size: 15px; color: #444; padding: 5px;")
-
-        # اضافه کردن لیبل‌ها به statusbar
-        self.statusbar.addPermanentWidget(self.lblSubscriptionInfo)
-        self.statusbar.addPermanentWidget(self.lblLastUpdate)
-
+        # ------------------------------
+        # Timers
+        # ------------------------------
         self.timer = QTimer()
         self.timer.timeout.connect(self.load_systems)
         self.timer.start(1000)
 
-        self.username = None
-        self.gamenet_password = None
-
-
-        # تلاش برای خواندن یوزرنیم و پسورد از فایل credentials.txt
-        try:
-            with open("credentials.txt", "r", encoding="utf-8") as f:
-                lines = f.read().splitlines()
-                for line in lines:
-                    if line.startswith("username="):
-                        self.username = line.split("=", 1)[1].strip()
-                    elif line.startswith("password="):
-                        self.gamenet_password = line.split("=", 1)[1].strip()
-        except Exception as e:
-            print("خطا در خواندن credentials.txt:", e)
-
-        # اگر یوزرنیم وجود داشت → تایمر ارسال را همینجا روشن کن
-        if self.username and self.gamenet_password:
-            self.start_sender_timer()
-
         self.subscription_timer = QTimer()
         self.subscription_timer.timeout.connect(self.start_subscription_check)
-        self.subscription_timer.start(3600 * 3000)  # هر ۱ ساعت
 
-        # چک اولیه هنگام اجرا
-        self.start_subscription_check()
+        # ------------------------------
+        # Mode Handling
+        # ------------------------------
+        if self.mode == "online":
+            self.subscription_timer.start(3600 * 3000)  # هر 3 ساعت
+            self.start_subscription_check()
+            self.start_sender_timer()
+        else:
+            self.disable_online_features()
 
-
+        # ------------------------------
+        # Initial Load
+        # ------------------------------
         self.load_systems()
+
+    # ============================================================
+    # MODE HANDLING
+    # ============================================================
+
+    def disable_online_features(self):
+        self.send_data_online = False
+
+        try:
+            self.subscription_timer.stop()
+        except:
+            pass
+
+        try:
+            self.sender_timer.stop()
+        except:
+            pass
+
+        self.lblSubscriptionInfo.setText("حالت آفلاین فعال است")
+
+    def switch_to_online(self):
+        if os.path.exists("license.key"):
+            os.remove("license.key")
+
+        QMessageBox.information(self, "حالت آنلاین", "نرم‌افزار در حالت آنلاین اجرا خواهد شد.")
+        QCoreApplication.quit()
+        QProcess.startDetached(sys.executable, sys.argv)
+
+    def switch_to_offline(self):
+        # ساخت فایل لایسنس ساده برای حالت آفلاین
+        with open("license.key", "w") as f:
+            f.write("OFFLINE-MODE")
+
+        QMessageBox.information(self, "حالت آفلاین", "نرم‌افزار در حالت آفلاین اجرا خواهد شد.")
+
+        # ریستارت برنامه
+        QCoreApplication.quit()
+        QProcess.startDetached(sys.executable, sys.argv)
+
+    def renew_subscription(self):
+        QMessageBox.information(self, "تمدید اشتراک", "صفحه تمدید اشتراک بعداً اضافه می‌شود.")
+
+    def logout(self):
+        if os.path.exists("credentials.txt"):
+            os.remove("credentials.txt")
+        if os.path.exists("license.key"):
+            os.remove("license.key")
+
+        QMessageBox.information(self, "خروج", "خروج انجام شد.")
+        QCoreApplication.quit()
+        QProcess.startDetached(sys.executable, sys.argv)
+
+
+    def start_sender_timer(self):
+        if self.mode == "offline":
+            return
+
+        self.sender_timer = QTimer()
+        self.sender_timer.timeout.connect(self.send_update)
+        self.sender_timer.start(5000)
 
 
     def lock_software(self):
@@ -144,25 +210,41 @@ class MainWindow(QMainWindow):
 
     def handle_subscription_error(self, err):
         print("خطا در چک اشتراک:", err)
-        # اینترنت قطع باشد → نرم‌افزار قفل نمی‌شود
+
 
     def handle_subscription_result(self, data):
         active = data.get("active", False)
 
-        if not active:
+        if active:
+            # نمایش وضعیت در استاتوس‌بار
+            self.lblSubscriptionInfo.setText("اشتراک فعال است")
+        else:
+            # نمایش وضعیت در استاتوس‌بار
+            self.lblSubscriptionInfo.setText("اشتراک منقضی شده")
+
+            # قفل نرم‌افزار
             self.subscription_expired = True
             self.lock_software()
 
     def start_subscription_check(self):
+        # حالت آفلاین → هیچ چکی انجام نشود
+        if self.mode == "offline":
+            return
+
+        # اگر یوزرنیم نداریم → چک نکن
         if not self.username:
             return
 
+        # شروع چک اشتراک با Thread
         self.sub_checker = SubscriptionChecker(self.username)
         self.sub_checker.result.connect(self.handle_subscription_result)
         self.sub_checker.error.connect(self.handle_subscription_error)
         self.sub_checker.start()
 
     def send_update(self):
+        if self.mode == "offline":
+            return
+
         if not hasattr(self, "username") or not hasattr(self, "gamenet_password"):
             print("❌ یوزرنیم یا پسورد گیم‌نت تنظیم نشده")
             return

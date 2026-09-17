@@ -152,11 +152,10 @@
    </property>
    <widget class="QMenu" name="menu">
     <property name="title">
-     <string>تنظیمات</string>
+     <string>سیستم ها</string>
     </property>
     <addaction name="btnAddSystem"/>
     <addaction name="btnSystemList"/>
-    <addaction name="btnUsername"/>
    </widget>
    <widget class="QMenu" name="menu_2">
     <property name="title">
@@ -172,6 +171,31 @@
     </property>
     <addaction name="btnSnackList"/>
    </widget>
+   <widget class="QMenu" name="menu_4">
+    <property name="title">
+     <string>تنظیمات</string>
+    </property>
+    <widget class="QMenu" name="menuSubscribtion">
+     <property name="font">
+      <font>
+       <family>B Nazanin</family>
+       <pointsize>11</pointsize>
+       <bold>true</bold>
+      </font>
+     </property>
+     <property name="title">
+      <string>اشتراک</string>
+     </property>
+     <addaction name="actionOnlineLogin"/>
+     <addaction name="actionOfflineLogin"/>
+     <addaction name="actionRenewSubscribtion"/>
+     <addaction name="actionLogout"/>
+    </widget>
+    <addaction name="btnUsername"/>
+    <addaction name="separator"/>
+    <addaction name="menuSubscribtion"/>
+   </widget>
+   <addaction name="menu_4"/>
    <addaction name="menu"/>
    <addaction name="menu_2"/>
    <addaction name="menu_3"/>
@@ -303,6 +327,18 @@
     <string>نوا خانم</string>
    </property>
   </action>
+  <action name="action_3">
+   <property name="text">
+    <string>پنل کاربری</string>
+   </property>
+   <property name="font">
+    <font>
+     <family>B Nazanin</family>
+     <pointsize>11</pointsize>
+     <bold>true</bold>
+    </font>
+   </property>
+  </action>
   <action name="btnUsername">
    <property name="text">
     <string>پنل کاربری</string>
@@ -311,6 +347,54 @@
     <font>
      <family>B Nazanin</family>
      <pointsize>11</pointsize>
+     <bold>true</bold>
+    </font>
+   </property>
+  </action>
+  <action name="actionOnlineLogin">
+   <property name="text">
+    <string>حالت آنلاین</string>
+   </property>
+   <property name="font">
+    <font>
+     <family>B Nazanin</family>
+     <pointsize>10</pointsize>
+     <bold>true</bold>
+    </font>
+   </property>
+  </action>
+  <action name="actionOfflineLogin">
+   <property name="text">
+    <string>حالت آفلاین</string>
+   </property>
+   <property name="font">
+    <font>
+     <family>B Nazanin</family>
+     <pointsize>10</pointsize>
+     <bold>true</bold>
+    </font>
+   </property>
+  </action>
+  <action name="actionRenewSubscribtion">
+   <property name="text">
+    <string>تمدید اشتراک</string>
+   </property>
+   <property name="font">
+    <font>
+     <family>B Nazanin</family>
+     <pointsize>10</pointsize>
+     <bold>true</bold>
+    </font>
+   </property>
+  </action>
+  <action name="actionLogout">
+   <property name="text">
+    <string>خروج از حساب</string>
+   </property>
+   <property name="font">
+    <font>
+     <family>B Nazanin</family>
+     <pointsize>10</pointsize>
      <bold>true</bold>
     </font>
    </property>

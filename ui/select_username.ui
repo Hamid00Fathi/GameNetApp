@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>406</width>
-    <height>173</height>
+    <width>340</width>
+    <height>150</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -42,7 +42,7 @@
           </font>
          </property>
          <property name="text">
-          <string>نام کاربری را وارد کنید:</string>
+          <string>نام کاربری            </string>
          </property>
         </widget>
        </item>
@@ -119,7 +119,7 @@
           </font>
          </property>
          <property name="text">
-          <string>رمز خود را وارد کنید:    </string>
+          <string>رمز:                        </string>
          </property>
         </widget>
        </item>
