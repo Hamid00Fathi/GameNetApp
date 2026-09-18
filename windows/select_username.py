@@ -89,9 +89,6 @@ class SelectUsernameWindow(QDialog):
 
         link = f"https://gamenet-web.onrender.com/login.html"
 
-        QInputDialog.getText(
-            self,
-            "لینک سایت",
-            "لینک مخصوص شما:",
-            text=link
-        )
+        site_link = QInputDialog(self)
+        site_link.getText("لینک سایت", "لینک مخصوص شما:",text=link)
+        site_link.resize(400 , 100)

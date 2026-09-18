@@ -17,6 +17,7 @@ class CustomerListWindow(QWidget):
 
 
         self.customerTable.verticalHeader().setVisible(False)
+        self.systemTable.verticalHeader().setDefaultSectionSize(50)
 
         self.customerTable.itemSelectionChanged.connect(self.select_customer)
         self.selected_customer_id = None

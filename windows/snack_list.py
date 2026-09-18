@@ -51,6 +51,7 @@ class SnackListWindow(QWidget):
         self.snackTable.setRowCount(len(snacks))
         self.snackTable.setColumnCount(4)
         self.snackTable.setHorizontalHeaderLabels(["حذف", "ویرایش", "قیمت", "نام خوراکی"])
+        self.snackTable.verticalHeader().setDefaultSectionSize(55)
 
         for row, snack in enumerate(snacks):
             snack_id = snack[0]

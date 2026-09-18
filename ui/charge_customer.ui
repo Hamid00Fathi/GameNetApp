@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>400</width>
-    <height>190</height>
+    <height>179</height>
    </rect>
   </property>
   <property name="minimumSize">
@@ -71,34 +71,6 @@
        </property>
       </widget>
      </item>
-     <item row="3" column="0" colspan="2">
-      <widget class="QPushButton" name="chargeButton">
-       <property name="font">
-        <font>
-         <family>B Nazanin</family>
-         <pointsize>12</pointsize>
-         <bold>true</bold>
-        </font>
-       </property>
-       <property name="text">
-        <string>ثبت</string>
-       </property>
-      </widget>
-     </item>
-     <item row="4" column="0" colspan="2">
-      <widget class="QLabel" name="statusLabel">
-       <property name="font">
-        <font>
-         <family>B Nazanin</family>
-         <pointsize>12</pointsize>
-         <bold>true</bold>
-        </font>
-       </property>
-       <property name="text">
-        <string/>
-       </property>
-      </widget>
-     </item>
      <item row="2" column="0" colspan="2">
       <layout class="QHBoxLayout" name="horizontalLayout">
        <item>
@@ -145,6 +117,20 @@
         </widget>
        </item>
       </layout>
+     </item>
+     <item row="3" column="0" colspan="2">
+      <widget class="QPushButton" name="chargeButton">
+       <property name="font">
+        <font>
+         <family>B Nazanin</family>
+         <pointsize>12</pointsize>
+         <bold>true</bold>
+        </font>
+       </property>
+       <property name="text">
+        <string>ثبت</string>
+       </property>
+      </widget>
      </item>
     </layout>
    </item>

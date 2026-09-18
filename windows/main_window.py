@@ -7,9 +7,7 @@ from windows.add_system import AddSystemWindow
 from windows.add_snack_to_system import AddSnackToSystem
 from windows.charge_customer import ChargeCustomerWindow
 from windows.customer_list import CustomerListWindow
-from windows.delete_snack import DeleteSnackWindow
 from windows.new_customer import NewCustomerWindow
-from windows.new_snack import NewSnackWindow
 from windows.snack_list import SnackListWindow
 from windows.system_list import System_List
 from windows.select_username import SelectUsernameWindow
@@ -107,9 +105,7 @@ class MainWindow(QMainWindow):
         self.btnAddCustomer.triggered.connect(self.open_add_customer)
         self.btnChargeCustomer.triggered.connect(self.open_chgarge_customer)
         self.btnCustomerList.triggered.connect(self.open_customer_list)
-        self.btnDeleteSnack.triggered.connect(self.open_delete_snack)
         self.btnSnackList.triggered.connect(self.open_snack_list)
-        self.btnNewSnack.triggered.connect(self.open_new_snack)
         self.btnSystemList.triggered.connect(self.open_system_list)
         self.btnUsername.triggered.connect(self.open_user_name)
 
@@ -914,6 +910,7 @@ class MainWindow(QMainWindow):
         # گرفتن سیستم‌های آزاد
         cur.execute("SELECT id, name, price_per_hour FROM systems WHERE id!=? AND active = 0", (old_sys_id,))
         systems = cur.fetchall()
+        systems.sort(key=lambda s: (re.sub(r'\d+', '', s[1]).strip().lower(), int(re.findall(r'\d+', s[1])[0])))
 
         if not systems:
             QMessageBox.warning(self, "خطا", "هیچ سیستم آزادی برای انتقال وجود ندارد.")
@@ -933,7 +930,7 @@ class MainWindow(QMainWindow):
 
         # انتخاب سیستم جدید
         dlg = QDialog(self)
-        dlg.resize(200, 100)
+        dlg.resize(300, 100)
         dlg.setWindowTitle("انتقال سیستم")
         layout = QVBoxLayout(dlg)
 
@@ -1341,16 +1338,6 @@ class MainWindow(QMainWindow):
             self.customerlist.show()
             self.load_systems()
 
-    def open_new_snack(self):
-            self.newsnack = NewSnackWindow()
-            self.newsnack.show()
-            self.load_systems()
-
-    def open_delete_snack(self):
-            self.deletesnack = DeleteSnackWindow()
-            self.deletesnack.show()
-            self.load_systems()
-
     def open_snack_list(self):
             self.snacklist = SnackListWindow()
             self.snacklist.show()
@@ -1360,7 +1347,6 @@ class MainWindow(QMainWindow):
            self.systemlist = System_List()
            self.systemlist.show()
            self.load_systems()
-
 
     def start_sender_timer(self):
         self.sender_timer = QTimer()

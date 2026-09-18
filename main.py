@@ -15,6 +15,8 @@ API_BASE = "https://gamenet-server-mongo-production.up.railway.app"
 mode = "online"
 password = ""
 
+
+
 # ---------------------------------------------------------
 # چک لایسنس آفلاین
 # ---------------------------------------------------------
@@ -67,7 +69,15 @@ def check_subscription(username):
     except:
         return "error", None, None
 
-
+def check_login(username, password):
+    try:
+        url = f"{API_BASE}/login"
+        r = requests.post(url, json={"username": username, "password": password}, timeout=5)
+        data = r.json()
+        return data.get("ok", False)
+    except:
+        return False
+    
 # ---------------------------------------------------------
 # پنجره انتخاب حالت ورود
 # ---------------------------------------------------------
@@ -181,6 +191,9 @@ if os.path.exists("credentials.txt"):
                 password = line.split("=", 1)[1].strip()
 
     if username:
+        if not check_login(username,password):
+            QMessageBox.critical(None, "خطا" , "نام کاربری یا رمز اشتباه است")
+            sys.exit()
         status, expire_date, days_left = check_subscription(username)
         if status == "active":
             window = MainWindow(mode="online", username=username)
