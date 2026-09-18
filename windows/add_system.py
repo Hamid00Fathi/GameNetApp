@@ -32,10 +32,17 @@ class AddSystemWindow(QWidget):
             # گرفتن قیمت از اسپین‌باکس
             price_per_hour = self.priceSpinBox.value()
 
+            if price_per_hour == 0:
+                QMessageBox.warning(self, "خطا!", "قیمت نمیتواند صفر باشد")
+                return
+            
+
             add_system(name, price_per_hour)
 
             QMessageBox.information(self, "موفق", "سیستم با موفقیت اضافه شد")
             self.close()
+
+            
 
         except Exception as e:
             self.statusLabel.setText(f"خطا: {e}")

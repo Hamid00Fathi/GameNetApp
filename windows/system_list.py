@@ -33,9 +33,13 @@ class System_List(QWidget):
 
         
 
-        price_str , ok2 = QInputDialog.getText(self , "افزودن سیستم" , "قیمت هر ساعت را وارد کنید" , text= "0")
+        price_str , ok2 = QInputDialog.getText(self , "افزودن سیستم" , "قیمت هر ساعت را وارد کنید" , text= "50000")
 
         if not ok2:
+            return
+
+        if price_str == "0":
+            QMessageBox.warning(self, "خطا!" , "قیمت سیستم نباید 0 باشد")
             return
 
         price = int(price_str.replace("," , ""))

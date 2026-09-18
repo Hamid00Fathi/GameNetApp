@@ -6,6 +6,9 @@ from datetime import datetime
 import jdatetime
 from windows.main_window import MainWindow
 from database import create_tables
+from windows.theme import apply_dark_theme
+from PyQt6.QtGui import QIcon
+
 
 API_BASE = "https://gamenet-server-mongo-production.up.railway.app"
 
@@ -71,6 +74,7 @@ def check_subscription(username):
 class LoginModeWindow(QDialog):
     def __init__(self):
         super().__init__()
+
         self.setWindowTitle("انتخاب حالت ورود")
         self.resize(300, 150)
 
@@ -95,6 +99,7 @@ class LoginModeWindow(QDialog):
 class LoginWindow(QDialog):
     def __init__(self):
         super().__init__()
+
         self.setWindowTitle("ورود آنلاین")
         self.resize(300, 150)
 
@@ -123,6 +128,7 @@ class LoginWindow(QDialog):
 class LicenseWindow(QDialog):
     def __init__(self):
         super().__init__()
+
         self.setWindowTitle("ورود با لایسنس")
         self.resize(300, 200)
 
@@ -159,7 +165,8 @@ class LicenseWindow(QDialog):
 
 create_tables()
 app = QApplication(sys.argv)
-
+app.setStyleSheet(apply_dark_theme())
+app.setWindowIcon(QIcon("icon.ico"))
 username = None
 password = ""
 mode = "online"

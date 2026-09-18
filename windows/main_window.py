@@ -19,6 +19,8 @@ import re
 import sys , os
 
 
+
+
 class SenderThread(QThread):
     finished = pyqtSignal(str)
 
@@ -69,6 +71,8 @@ class MainWindow(QMainWindow):
 
         uic.loadUi(os.path.join(base_path, "ui", "main_window.ui"), self)
 
+
+
         # ------------------------------
         # Mode & Username
         # ------------------------------
@@ -113,7 +117,7 @@ class MainWindow(QMainWindow):
         # Timers
         # ------------------------------
         self.timer = QTimer()
-        self.timer.timeout.connect(self.load_systems)
+        self.timer.timeout.connect(self.safe_update_systems)
         self.timer.start(1000)
 
         self.subscription_timer = QTimer()
@@ -138,6 +142,8 @@ class MainWindow(QMainWindow):
     # MODE HANDLING
     # ============================================================
 
+    
+
     def disable_online_features(self):
         self.send_data_online = False
 
@@ -153,27 +159,12 @@ class MainWindow(QMainWindow):
 
         self.lblSubscriptionInfo.setText("حالت آفلاین فعال است")
 
+
     def switch_to_online(self):
-        if os.path.exists("license.key"):
-            os.remove("license.key")
-
-        QMessageBox.information(self, "حالت آنلاین", "نرم‌افزار در حالت آنلاین اجرا خواهد شد.")
-
-        exe_path = os.path.abspath(sys.argv[0])
-        QCoreApplication.quit()
-        QProcess.startDetached(exe_path, sys.argv[1:])
+        QMessageBox.information(self, "تمدید اشتراک", "صفحه تغییر اشتراک بعداً اضافه می‌شود.")
 
     def switch_to_offline(self):
-        # ذخیره لایسنس
-        with open("license.key", "w") as f:
-            f.write("OFFLINE-MODE")
-
-        QMessageBox.information(self, "حالت آفلاین", "نرم‌افزار در حالت آفلاین اجرا خواهد شد.")
-
-        # ریستارت صحیح
-        exe_path = os.path.abspath(sys.argv[0])
-        QCoreApplication.quit()
-        QProcess.startDetached(exe_path, sys.argv[1:])
+        QMessageBox.information(self, "تمدید اشتراک", "صفحه تغییر اشتراک بعداً اضافه می‌شود.")
 
     def renew_subscription(self):
         QMessageBox.information(self, "تمدید اشتراک", "صفحه تمدید اشتراک بعداً اضافه می‌شود.")
@@ -186,7 +177,6 @@ class MainWindow(QMainWindow):
 
         QMessageBox.information(self, "خروج", "خروج انجام شد.")
         QCoreApplication.quit()
-        QProcess.startDetached(sys.executable, sys.argv)
 
 
     def start_sender_timer(self):
@@ -209,27 +199,42 @@ class MainWindow(QMainWindow):
             QApplication.quit()
 
         except Exception as e:
-            print("خطا در قفل نرم‌افزار:", e)
+            print("خطا در قفل نرم‌افزار:")
 
     def handle_subscription_error(self, err):
-        print("خطا در چک اشتراک:", err)
+        print("خطا در چک اشتراک:")
 
 
     def handle_subscription_result(self, data):
         active = data.get("active", False)
 
         # گرفتن تاریخ
-        expire = data.get("expireDate") or data.get("expire_date") or "نامشخص"
+        expire = data.get("expireDate") or data.get("expire_date")
 
-        # گرفتن روز مانده
-        days_left = (
-            data.get("daysLeft") or
-            data.get("days_left") or
-            "نامشخص"
-        )
+        # گرفتن روز مانده از API اگر وجود داشته باشد
+        api_days = data.get("daysLeft") or data.get("days_left")
 
+        # اگر API روز مانده را نداد → خودمان حساب می‌کنیم
+        if api_days is None and expire:
+            try:
+                expire_dt = datetime.strptime(expire, "%Y-%m-%d")
+                today = datetime.now()
+
+                delta = expire_dt - today
+                days_left = delta.days + 1
+
+                if days_left < 0:
+                    days_left = 0
+            except:
+                days_left = "نامشخص"
+        else:
+            days_left = api_days or "نامشخص"
+
+        # نمایش در استاتوس بار
         if active:
-            self.lblSubscriptionInfo.setText(f"مانده: {days_left} روز | پایان: {expire}")
+            self.lblSubscriptionInfo.setText(
+                f"مانده: {days_left} روز | پایان: {expire}"
+            )
         else:
             self.lblSubscriptionInfo.setText("اشتراک منقضی شده")
             self.subscription_expired = True
@@ -425,13 +430,67 @@ class MainWindow(QMainWindow):
     def status_item(self , active):
         item = QTableWidgetItem("")
         if active == 0:
-            item.setBackground(QColor("#FF3030"))
+            item.setBackground(QColor("#ff2b40"))
         elif active == 1:
-            item.setBackground(QColor("#51E22D"))
+            item.setBackground(QColor("#00b953"))
         else:
-            item.setBackground(QColor("#2A7AE4"))
+            item.setBackground(QColor("#0084ff"))
 
         return item
+
+    def safe_update_systems(self):
+        try:
+            self.update_systems_light()
+        except:
+            try:
+                self.load_systems()
+            except:
+                return  
+
+            try:
+                self.update_systems_light()
+            except:
+                return
+
+
+    def update_systems_light(self):
+        systems = get_systems()
+        systems.sort(key=lambda s: (re.sub(r'\d+', '', s[1]).strip().lower(), int(re.findall(r'\d+', s[1])[0])))
+
+        for row, sys in enumerate(systems):
+            sys_id, name, active, start_time, elapsed, cost, customer_id, note = sys
+
+            # نام سیستم
+            self.systemTable.item(row, 9).setText(name)
+
+            # وضعیت
+            self.systemTable.setItem(row, 8, self.status_item(active))
+
+            # زمان سپری‌شده
+            self.systemTable.item(row, 3).setText(elapsed)
+
+            # هزینه
+            self.systemTable.item(row, 2).setText(f"{cost:,}")
+
+            # نام مشتری
+            conn = sqlite3.connect("gamenet.db")
+            cur = conn.cursor()
+            cur.execute("""
+                SELECT customers.name, customers.family, customers.code
+                FROM systems
+                LEFT JOIN customers ON customers.id = systems.customer_id
+                WHERE systems.id=?
+            """, (sys_id,))
+            customer = cur.fetchone()
+            conn.close()
+
+            if customer and customer[0] is not None:
+                cname = f"{customer[0]} {customer[1]} - {customer[2]}"
+            else:
+                cname = "متفرقه"
+
+            self.systemTable.item(row, 1).setText(cname)
+
 
 
     def load_systems(self):
@@ -447,8 +506,8 @@ class MainWindow(QMainWindow):
 
         # 2) گرفتن سیستم‌ها
         systems = get_systems()
-        self.systemTable.setRowCount(len(systems))
         systems.sort(key=lambda s: (re.sub(r'\d+', '', s[1]).strip().lower(), int(re.findall(r'\d+', s[1])[0])))
+        self.systemTable.setRowCount(len(systems))
 
         # 3) نمایش جدول
         conn = sqlite3.connect("gamenet.db")
@@ -462,7 +521,7 @@ class MainWindow(QMainWindow):
             # یادداشت
             note_btn = QPushButton()
             note_btn.setIcon(QIcon("icons/note.png"))
-            note_btn.setIconSize(QSize(25, 25))
+            note_btn.setIconSize(QSize(28, 28))
             note_btn.setStyleSheet("border: none;")
             note_btn.clicked.connect(lambda _, sid=sys_id: self.note_system(sid))
             self.systemTable.setCellWidget(row, 10, note_btn)
@@ -487,7 +546,7 @@ class MainWindow(QMainWindow):
             # دکمه استارت
             start_btn = QPushButton()
             start_btn.setIcon(QIcon("icons/start.png"))
-            start_btn.setIconSize(QSize(25, 25))
+            start_btn.setIconSize(QSize(28, 28))
             start_btn.setStyleSheet("border: none;")
             start_btn.clicked.connect(lambda _, sid=sys_id: self.start_system(sid))
 
@@ -504,7 +563,7 @@ class MainWindow(QMainWindow):
             # دکمه استاپ
             stop_btn = QPushButton()
             stop_btn.setIcon(QIcon("icons/stop.png"))
-            stop_btn.setIconSize(QSize(28, 28))
+            stop_btn.setIconSize(QSize(30, 30))
             stop_btn.setStyleSheet("border: none;")
             stop_btn.clicked.connect(lambda _, sid=sys_id: self.stop_system(sid))
             self.systemTable.setCellWidget(row, 6, stop_btn)
@@ -513,7 +572,7 @@ class MainWindow(QMainWindow):
             # دکمه تغییر سیستم
             change_btn = QPushButton()
             change_btn.setIcon(QIcon("icons/edit.png"))
-            change_btn.setIconSize(QSize(28, 28))
+            change_btn.setIconSize(QSize(30, 30))
             change_btn.setStyleSheet("border: none;")
             change_btn.clicked.connect(lambda _, sid=sys_id: self.change_system(sid))
             self.systemTable.setCellWidget(row, 5, change_btn)
@@ -522,7 +581,7 @@ class MainWindow(QMainWindow):
             # دکمه خوراکی
             snack_btn = QPushButton()
             snack_btn.setIcon(QIcon("icons/snack.png"))
-            snack_btn.setIconSize(QSize(28, 28))
+            snack_btn.setIconSize(QSize(30, 30))
             snack_btn.setStyleSheet("border: none;")
             snack_btn.clicked.connect(lambda _, sid=sys_id: self.add_snack(sid))
             self.systemTable.setCellWidget(row, 4, snack_btn)
@@ -543,7 +602,7 @@ class MainWindow(QMainWindow):
             # دکمه تسویه
             checkout_btn = QPushButton()
             checkout_btn.setIcon(QIcon("icons/checkout.png"))
-            checkout_btn.setIconSize(QSize(25, 25))
+            checkout_btn.setIconSize(QSize(28, 28))
             checkout_btn.setStyleSheet("border: none;")
             checkout_btn.clicked.connect(lambda _, sid=sys_id: self.checkout(sid))
             self.systemTable.setCellWidget(row, 0, checkout_btn)
@@ -1254,7 +1313,7 @@ class MainWindow(QMainWindow):
                 self.load_systems()
 
         except Exception as e:
-            QMessageBox.warning(self, "خطا" , f"مشکل در تسویه حساب:\n{e}")
+            pass
 
         finally:
             self.timer.start(1000)
@@ -1264,35 +1323,43 @@ class MainWindow(QMainWindow):
     def open_add_system(self):
         self.addSystem = AddSystemWindow()
         self.addSystem.show()
+        self.load_systems()
 
 
     def open_add_customer(self):
             self.addcustomer = NewCustomerWindow()
             self.addcustomer.show()
+            self.load_systems()
 
     def open_chgarge_customer(self):
             self.chargecustomer = ChargeCustomerWindow()
             self.chargecustomer.show()
+            self.load_systems()
 
     def open_customer_list(self):
             self.customerlist = CustomerListWindow()
             self.customerlist.show()
+            self.load_systems()
 
     def open_new_snack(self):
             self.newsnack = NewSnackWindow()
             self.newsnack.show()
+            self.load_systems()
 
     def open_delete_snack(self):
             self.deletesnack = DeleteSnackWindow()
             self.deletesnack.show()
+            self.load_systems()
 
     def open_snack_list(self):
             self.snacklist = SnackListWindow()
             self.snacklist.show()
+            self.load_systems()
 
     def open_system_list(self):
            self.systemlist = System_List()
            self.systemlist.show()
+           self.load_systems()
 
 
     def start_sender_timer(self):

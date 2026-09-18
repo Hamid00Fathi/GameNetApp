@@ -80,7 +80,7 @@ def get_systems():
     conn = get_connection()
     cur = conn.cursor()
 
-    cur.execute("SELECT id, name, price_per_hour, active, customer_id, cost, note FROM systems")
+    cur.execute("SELECT id, name, price_per_hour, active, customer_id, cost, note FROM systems ORDER BY CAST(substr(name, 3) as INTEGER) ASC")
     systems_raw = cur.fetchall()
 
     systems = []

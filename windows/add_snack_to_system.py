@@ -15,8 +15,6 @@ class AddSnackToSystem(QWidget):
         uic.loadUi(os.path.join(base_path, "ui", "add_snack_to_system.ui"), self)
 
 
-
-
         self.system_id = system_id
         self.snacks = []              # لیست کامل خوراکی‌ها
         self.selected_ids = set()     # جلوگیری از دوباره اضافه شدن
