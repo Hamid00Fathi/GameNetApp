@@ -48,9 +48,19 @@ class System_List(QWidget):
 
         self.load_systems()
 
+    def safe_sort_key(self , name):
+        # بخش حروفی
+        alpha = re.sub(r'\d+', '', name).strip().lower()
+
+        # بخش عددی
+        nums = re.findall(r'\d+', name)
+        num = int(nums[0]) if nums else 0
+
+        return (alpha, num)
+
     def load_systems(self):
         systems = get_all_systems()
-        systems.sort(key=lambda s: (re.sub(r'\d+', '', s[1]).strip().lower(), int(re.findall(r'\d+', s[1])[0])))
+        systems.sort(key=lambda s: self.safe_sort_key(s[1]))
 
         self.systemTable.setRowCount(len(systems))
         self.systemTable.setColumnCount(4)

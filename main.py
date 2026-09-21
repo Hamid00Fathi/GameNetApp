@@ -181,34 +181,14 @@ username = None
 password = ""
 mode = "online"
 
-# ۱) اگر credentials.txt وجود دارد → تلاش برای ورود آنلاین بدون سوال
-if os.path.exists("credentials.txt"):
-    with open("credentials.txt", "r") as f:
-        for line in f.read().splitlines():
-            if line.startswith("username="):
-                username = line.split("=", 1)[1].strip()
-            if line.startswith("password="):
-                password = line.split("=", 1)[1].strip()
-
-    if username:
-        if not check_login(username,password):
-            QMessageBox.critical(None, "خطا" , "نام کاربری یا رمز اشتباه است")
-            sys.exit()
-        status, expire_date, days_left = check_subscription(username)
-        if status == "active":
-            window = MainWindow(mode="online", username=username)
-            window.gamenet_password = password
-            window.lblSubscriptionInfo.setText(f"مانده اشتراک: {days_left} روز | پایان: {expire_date}")
-            window.show()
-            sys.exit(app.exec())
-        # اگر اشتراک منقضی شده، می‌ریم سراغ انتخاب حالت
-
-# ۲) اگر فایل لایسنس وجود داشت → مستقیم آفلاین
+# 1) اگر فایل لایسنس وجود داشت → مستقیم آفلاین
+# 🔥 اولویت: اگر license.key وجود دارد → اول آفلاین مود
 if os.path.exists("license.key"):
     mode = "offline"
     username = None
     password = ""
 
+    # خواندن credentials اگر وجود داشت
     if os.path.exists("credentials.txt"):
         with open("credentials.txt", "r") as f:
             for line in f.read().splitlines():
@@ -217,14 +197,45 @@ if os.path.exists("license.key"):
                 if line.startswith("password="):
                     password = line.split("=", 1)[1].strip()
 
-    if username and check_license_status(username):
-        window = MainWindow(mode=mode, username=username)
+    # 🔥 چک خراب بودن credentials
+    if not username or not password:
+        username = None
+        password = None
+
+    # 🔥 چک پسورد + چک لایسنس
+    if username and password and check_login(username, password) and check_license_status(username):
+        window = MainWindow(mode="offline", username=username)
         window.gamenet_password = password
+        window.lblSubscriptionInfo.setText("حالت آفلاین فعال است")
         window.show()
         sys.exit(app.exec())
-    else:
-        QMessageBox.critical(None, "خطا", "لایسنس معتبر نیست.")
-        sys.exit()
+
+# 2) اگر credentials.txt وجود دارد → تلاش برای ورود آنلاین بدون سوال
+if os.path.exists("credentials.txt"):
+    with open("credentials.txt", "r") as f:
+        for line in f.read().splitlines():
+            if line.startswith("username="):
+                username = line.split("=", 1)[1].strip()
+            if line.startswith("password="):
+                password = line.split("=", 1)[1].strip()
+
+    # اگر فایل خراب بود (یوزرنیم یا پسورد خالی بود)
+    if not username or not password:
+        username = None
+        password = None
+
+    # حالا اگر فایل سالم بود، چک لاگین انجام بده
+    if username:
+        if not check_login(username, password):
+            QMessageBox.critical(None, "خطا", "نام کاربری یا رمز اشتباه است")
+
+            # فایل خراب را حذف کن
+            try:
+                os.remove("credentials.txt")
+            except:
+                pass
+
+            sys.exit()
 
 # ۳) اگر نه credentials معتبر بود، نه لایسنس → پنجره انتخاب حالت
 mode_window = LoginModeWindow()
@@ -241,6 +252,9 @@ if choice == 1:
     username, password = login.get_data()
 
     status, expire_date, days_left = check_subscription(username)
+
+    if not check_login(username, password):
+        QMessageBox.critical(None, "خطا", "نام کاربری یا رمز اشتباه است")
 
     if status != "active":
         QMessageBox.critical(None, "خطا", "اشتراک فعال نیست.")
@@ -268,25 +282,58 @@ if choice == 2:
 
     username, password, license_key = lic_win.get_data()
 
-    # چک لایسنس با سرور
-    r = requests.post(f"{API_BASE}/license/verify", json={"username": username, "key": license_key})
-    data = r.json()
+    # 🔥 چک پسورد آفلاین با credentials.txt
+    if os.path.exists("credentials.txt"):
+        saved_user = None
+        saved_pass = None
 
-    if not data.get("valid"):
-        QMessageBox.critical(None, "خطا", "لایسنس معتبر نیست.")
-        sys.exit()
+        with open("credentials.txt", "r") as f:
+            for line in f.read().splitlines():
+                if line.startswith("username="):
+                    saved_user = line.split("=", 1)[1].strip()
+                if line.startswith("password="):
+                    saved_pass = line.split("=", 1)[1].strip()
 
-    # ذخیره فایل لایسنس
-    with open("license.key", "w") as f:
-        f.write(license_key)
+        if password != saved_pass:
+            QMessageBox.critical(None, "خطا", "رمز ورود اشتباه است.")
+            sys.exit()
 
-    # ذخیره یوزرنیم و پسورد
-    with open("credentials.txt", "w") as f:
-        f.write(f"username={username}\n")
-        f.write(f"password={password}\n")
+    # تلاش برای چک لایسنس از سرور
+    try:
+        r = requests.post(f"{API_BASE}/license/verify", json={"username": username, "key": license_key}, timeout=5)
+        data = r.json()
 
-    window = MainWindow(mode="offline", username=username)
-    window.gamenet_password = password
-    window.lblSubscriptionInfo.setText("حالت آفلاین فعال است")
-    window.show()
-    sys.exit(app.exec())
+        if not data.get("valid"):
+            QMessageBox.critical(None, "خطا", "لایسنس معتبر نیست.")
+            sys.exit()
+
+        # ذخیره فایل لایسنس
+        with open("license.key", "w") as f:
+            f.write(license_key)
+
+        # ذخیره credentials
+        with open("credentials.txt", "w") as f:
+            f.write(f"username={username}\n")
+            f.write(f"password={password}\n")
+
+        window = MainWindow(mode="offline", username=username)
+        window.gamenet_password = password
+        window.lblSubscriptionInfo.setText("حالت آفلاین فعال است")
+        window.show()
+        sys.exit(app.exec())
+
+    except:
+        # اگر اینترنت قطع بود → فقط فایل لایسنس را چک کن
+        if os.path.exists("license.key"):
+            with open("credentials.txt", "w") as f:
+                f.write(f"username={username}\n")
+                f.write(f"password={password}\n")
+
+            window = MainWindow(mode="offline", username=username)
+            window.gamenet_password = password
+            window.lblSubscriptionInfo.setText("حالت آفلاین فعال است (بدون اینترنت)")
+            window.show()
+            sys.exit(app.exec())
+        else:
+            QMessageBox.critical(None, "خطا", "اتصال اینترنت برقرار نیست و فایل لایسنس موجود نیست.")
+            sys.exit()

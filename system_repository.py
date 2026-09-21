@@ -17,6 +17,8 @@ def remove_system(system_id):
     cursor = conn.cursor()
 
     cursor.execute("DELETE FROM systems WHERE id = ?" , (system_id , ))
+    cursor.execute("DELETE FROM sessions WHERE system_id=?")
+    cursor.execute("DELETE FROM session_snacks WHERE session_id IN (SELECT id FROM sessions WHERE system_id=?)")
 
     conn.commit()
     conn.close()

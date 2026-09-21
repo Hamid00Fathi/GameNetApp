@@ -255,8 +255,7 @@ class MainWindow(QMainWindow):
         if self.mode == "offline":
             return
 
-        if not hasattr(self, "username") or not hasattr(self, "gamenet_password"):
-            print("❌ یوزرنیم یا پسورد گیم‌نت تنظیم نشده")
+        if not self.username or not getattr(self, "gamenet_password"):
             return
 
         systems_json = self.build_status_json()
@@ -434,6 +433,16 @@ class MainWindow(QMainWindow):
 
         return item
 
+    def safe_sort_key(self , name):
+        # بخش حروفی
+        alpha = re.sub(r'\d+', '', name).strip().lower()
+
+        # بخش عددی
+        nums = re.findall(r'\d+', name)
+        num = int(nums[0]) if nums else 0
+
+        return (alpha, num)
+
     def safe_update_systems(self):
         try:
             self.update_systems_light()
@@ -451,16 +460,13 @@ class MainWindow(QMainWindow):
 
     def update_systems_light(self):
         systems = get_systems()
-        systems.sort(key=lambda s: (re.sub(r'\d+', '', s[1]).strip().lower(), int(re.findall(r'\d+', s[1])[0])))
+        systems.sort(key=lambda s: self.safe_sort_key(s[1]))
+
+        conn = sqlite3.connect("gamenet.db")
+        cur = conn.cursor()
 
         for row, sys in enumerate(systems):
             sys_id, name, active, start_time, elapsed, cost, customer_id, note = sys
-
-            # نام سیستم
-            self.systemTable.item(row, 9).setText(name)
-
-            # وضعیت
-            self.systemTable.setItem(row, 8, self.status_item(active))
 
             # زمان سپری‌شده
             self.systemTable.item(row, 3).setText(elapsed)
@@ -469,8 +475,6 @@ class MainWindow(QMainWindow):
             self.systemTable.item(row, 2).setText(f"{cost:,}")
 
             # نام مشتری
-            conn = sqlite3.connect("gamenet.db")
-            cur = conn.cursor()
             cur.execute("""
                 SELECT customers.name, customers.family, customers.code
                 FROM systems
@@ -478,7 +482,7 @@ class MainWindow(QMainWindow):
                 WHERE systems.id=?
             """, (sys_id,))
             customer = cur.fetchone()
-            conn.close()
+
 
             if customer and customer[0] is not None:
                 cname = f"{customer[0]} {customer[1]} - {customer[2]}"
@@ -487,10 +491,9 @@ class MainWindow(QMainWindow):
 
             self.systemTable.item(row, 1).setText(cname)
 
-
+        conn.close()
 
     def load_systems(self):
-
         # 1) آپدیت هر ثانیه
         with sqlite3.connect("gamenet.db") as conn:
             cur = conn.cursor()
@@ -500,131 +503,123 @@ class MainWindow(QMainWindow):
                 WHERE active IN (1, 2)
             """, (datetime.now().strftime("%Y-%m-%d %H:%M:%S"),))
 
-        # 2) گرفتن سیستم‌ها
-        systems = get_systems()
-        systems.sort(key=lambda s: (re.sub(r'\d+', '', s[1]).strip().lower(), int(re.findall(r'\d+', s[1])[0])))
-        self.systemTable.setRowCount(len(systems))
+            # 2) گرفتن سیستم‌ها
+            systems = get_systems()
+            systems.sort(key=lambda s: self.safe_sort_key(s[1]))
+            self.systemTable.setRowCount(len(systems))
 
-        # 3) نمایش جدول
-        conn = sqlite3.connect("gamenet.db")
-        cur = conn.cursor()
+            for row, sys in enumerate(systems):
+                sys_id, name, active, start_time, elapsed, cost , custoer_id , note = sys
 
+                # یادداشت
+                note_btn = QPushButton()
+                note_btn.setIcon(QIcon("icons/note.png"))
+                note_btn.setIconSize(QSize(28, 28))
+                note_btn.setStyleSheet("border: none;")
+                note_btn.clicked.connect(lambda _, sid=sys_id: self.note_system(sid))
+                self.systemTable.setCellWidget(row, 10, note_btn)
+                self.systemTable.setColumnWidth(10, 80)
 
+                # اگر سیستم فعال است → دکمه نوت فعال باشد
+                if active in (1 ,2):
+                    note_btn.setEnabled(True)
+                else:
+                    note_btn.setEnabled(False)
 
-        for row, sys in enumerate(systems):
-            sys_id, name, active, start_time, elapsed, cost , custoer_id , note = sys
+                # نام سیستم
+                item = QTableWidgetItem(name)
+                item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+                self.systemTable.setItem(row, 9, item)
+                self.systemTable.setColumnWidth(9, 200)
 
-            # یادداشت
-            note_btn = QPushButton()
-            note_btn.setIcon(QIcon("icons/note.png"))
-            note_btn.setIconSize(QSize(28, 28))
-            note_btn.setStyleSheet("border: none;")
-            note_btn.clicked.connect(lambda _, sid=sys_id: self.note_system(sid))
-            self.systemTable.setCellWidget(row, 10, note_btn)
-            self.systemTable.setColumnWidth(10, 80)
+                # وضعیت
+                self.systemTable.setItem(row, 8, self.status_item(active))
+                self.systemTable.setColumnWidth(8, 60)
 
-            # اگر سیستم فعال است → دکمه نوت فعال باشد
-            if active in (1 ,2):
-                note_btn.setEnabled(True)
-            else:
-                note_btn.setEnabled(False)
+                # دکمه استارت
+                start_btn = QPushButton()
+                start_btn.setIcon(QIcon("icons/start.png"))
+                start_btn.setIconSize(QSize(28, 28))
+                start_btn.setStyleSheet("border: none;")
+                start_btn.clicked.connect(lambda _, sid=sys_id: self.start_system(sid))
 
-            # نام سیستم
-            item = QTableWidgetItem(name)
-            item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-            self.systemTable.setItem(row, 9, item)
-            self.systemTable.setColumnWidth(9, 200)
-
-            # وضعیت
-            self.systemTable.setItem(row, 8, self.status_item(active))
-            self.systemTable.setColumnWidth(8, 60)
-
-            # دکمه استارت
-            start_btn = QPushButton()
-            start_btn.setIcon(QIcon("icons/start.png"))
-            start_btn.setIconSize(QSize(28, 28))
-            start_btn.setStyleSheet("border: none;")
-            start_btn.clicked.connect(lambda _, sid=sys_id: self.start_system(sid))
-
-            # اگر سیستم فعال است → دکمه استارت غیرفعال
-            if active == 1:
-                start_btn.setEnabled(False)
-            else:
-                start_btn.setEnabled(True)
+                # اگر سیستم فعال است → دکمه استارت غیرفعال
+                if active == 1:
+                    start_btn.setEnabled(False)
+                else:
+                    start_btn.setEnabled(True)
 
 
-            self.systemTable.setCellWidget(row, 7, start_btn)
-            self.systemTable.setColumnWidth(7, 80)
+                self.systemTable.setCellWidget(row, 7, start_btn)
+                self.systemTable.setColumnWidth(7, 80)
 
-            # دکمه استاپ
-            stop_btn = QPushButton()
-            stop_btn.setIcon(QIcon("icons/stop.png"))
-            stop_btn.setIconSize(QSize(30, 30))
-            stop_btn.setStyleSheet("border: none;")
-            stop_btn.clicked.connect(lambda _, sid=sys_id: self.stop_system(sid))
-            self.systemTable.setCellWidget(row, 6, stop_btn)
-            self.systemTable.setColumnWidth(6, 80)
+                # دکمه استاپ
+                stop_btn = QPushButton()
+                stop_btn.setIcon(QIcon("icons/stop.png"))
+                stop_btn.setIconSize(QSize(30, 30))
+                stop_btn.setStyleSheet("border: none;")
+                stop_btn.clicked.connect(lambda _, sid=sys_id: self.stop_system(sid))
+                self.systemTable.setCellWidget(row, 6, stop_btn)
+                self.systemTable.setColumnWidth(6, 80)
 
-            # دکمه تغییر سیستم
-            change_btn = QPushButton()
-            change_btn.setIcon(QIcon("icons/edit.png"))
-            change_btn.setIconSize(QSize(30, 30))
-            change_btn.setStyleSheet("border: none;")
-            change_btn.clicked.connect(lambda _, sid=sys_id: self.change_system(sid))
-            self.systemTable.setCellWidget(row, 5, change_btn)
-            self.systemTable.setColumnWidth(5, 110)
+                # دکمه تغییر سیستم
+                change_btn = QPushButton()
+                change_btn.setIcon(QIcon("icons/edit.png"))
+                change_btn.setIconSize(QSize(30, 30))
+                change_btn.setStyleSheet("border: none;")
+                change_btn.clicked.connect(lambda _, sid=sys_id: self.change_system(sid))
+                self.systemTable.setCellWidget(row, 5, change_btn)
+                self.systemTable.setColumnWidth(5, 110)
 
-            # دکمه خوراکی
-            snack_btn = QPushButton()
-            snack_btn.setIcon(QIcon("icons/snack.png"))
-            snack_btn.setIconSize(QSize(30, 30))
-            snack_btn.setStyleSheet("border: none;")
-            snack_btn.clicked.connect(lambda _, sid=sys_id: self.add_snack(sid))
-            self.systemTable.setCellWidget(row, 4, snack_btn)
-            self.systemTable.setColumnWidth(4, 110)
+                # دکمه خوراکی
+                snack_btn = QPushButton()
+                snack_btn.setIcon(QIcon("icons/snack.png"))
+                snack_btn.setIconSize(QSize(30, 30))
+                snack_btn.setStyleSheet("border: none;")
+                snack_btn.clicked.connect(lambda _, sid=sys_id: self.add_snack(sid))
+                self.systemTable.setCellWidget(row, 4, snack_btn)
+                self.systemTable.setColumnWidth(4, 110)
 
-            # زمان سپری‌شده
-            item_elapsed = QTableWidgetItem(elapsed)
-            item_elapsed.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-            self.systemTable.setItem(row, 3, item_elapsed)
-            self.systemTable.setColumnWidth(3, 100)
+                # زمان سپری‌شده
+                item_elapsed = QTableWidgetItem(elapsed)
+                item_elapsed.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+                self.systemTable.setItem(row, 3, item_elapsed)
+                self.systemTable.setColumnWidth(3, 100)
 
-            # هزینه
-            item_cost = QTableWidgetItem(f"{cost:,}")
-            item_cost.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-            self.systemTable.setItem(row, 2, item_cost)
-            self.systemTable.setColumnWidth(2, 150)
+                # هزینه
+                item_cost = QTableWidgetItem(f"{cost:,}")
+                item_cost.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+                self.systemTable.setItem(row, 2, item_cost)
+                self.systemTable.setColumnWidth(2, 150)
 
-            # دکمه تسویه
-            checkout_btn = QPushButton()
-            checkout_btn.setIcon(QIcon("icons/checkout.png"))
-            checkout_btn.setIconSize(QSize(28, 28))
-            checkout_btn.setStyleSheet("border: none;")
-            checkout_btn.clicked.connect(lambda _, sid=sys_id: self.checkout(sid))
-            self.systemTable.setCellWidget(row, 0, checkout_btn)
-            self.systemTable.setColumnWidth(0, 90)
+                # دکمه تسویه
+                checkout_btn = QPushButton()
+                checkout_btn.setIcon(QIcon("icons/checkout.png"))
+                checkout_btn.setIconSize(QSize(28, 28))
+                checkout_btn.setStyleSheet("border: none;")
+                checkout_btn.clicked.connect(lambda _, sid=sys_id: self.checkout(sid))
+                self.systemTable.setCellWidget(row, 0, checkout_btn)
+                self.systemTable.setColumnWidth(0, 90)
 
-            # گرفتن نام مشتری
-            cur.execute("""
-                SELECT customers.name, customers.family, customers.code
-                FROM systems
-                LEFT JOIN customers ON customers.id = systems.customer_id
-                WHERE systems.id=?
-            """, (sys_id,))
-            customer = cur.fetchone()
+                # گرفتن نام مشتری
+                cur.execute("""
+                    SELECT customers.name, customers.family, customers.code
+                    FROM systems
+                    LEFT JOIN customers ON customers.id = systems.customer_id
+                    WHERE systems.id=?
+                """, (sys_id,))
+                customer = cur.fetchone()
 
-            if customer and customer[0] is not None:
-                cname = f"{customer[0]} {customer[1]} - {customer[2]}"
-            else:
-                cname = "متفرقه"
+                if customer and customer[0] is not None:
+                    cname = f"{customer[0]} {customer[1]} - {customer[2]}"
+                else:
+                    cname = "متفرقه"
 
-            item_customer = QTableWidgetItem(cname)
-            item_customer.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-            self.systemTable.setItem(row, 1, item_customer)
-            self.systemTable.setColumnWidth(1, 200)
+                item_customer = QTableWidgetItem(cname)
+                item_customer.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+                self.systemTable.setItem(row, 1, item_customer)
+                self.systemTable.setColumnWidth(1, 200)
 
-
-        conn.close()
 
 
 
@@ -910,7 +905,7 @@ class MainWindow(QMainWindow):
         # گرفتن سیستم‌های آزاد
         cur.execute("SELECT id, name, price_per_hour FROM systems WHERE id!=? AND active = 0", (old_sys_id,))
         systems = cur.fetchall()
-        systems.sort(key=lambda s: (re.sub(r'\d+', '', s[1]).strip().lower(), int(re.findall(r'\d+', s[1])[0])))
+        systems.sort(key=lambda s: self.safe_sort_key(s[1]))
 
         if not systems:
             QMessageBox.warning(self, "خطا", "هیچ سیستم آزادی برای انتقال وجود ندارد.")
