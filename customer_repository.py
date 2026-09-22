@@ -41,7 +41,18 @@ def get_balance(customer_id):
     cursor = conn.cursor()
 
     cursor.execute("SELECT balance FROM customers WHERE id = ?" , (customer_id , ))
-    balance = cursor.fetchone()[0]
+    result = cursor.fetchone()
+    balance = result[0] if result else 0
 
     conn.close()
     return balance
+
+def customer_code_exists(code):
+    conn = sqlite3.connect("gamenet.db")
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT id FROM customers WHERE code = ?", (code,))
+    result = cursor.fetchone()
+
+    conn.close()
+    return result is not None

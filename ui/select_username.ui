@@ -77,20 +77,6 @@
          </property>
         </widget>
        </item>
-       <item>
-        <widget class="QPushButton" name="saveBtn">
-         <property name="font">
-          <font>
-           <family>B Nazanin</family>
-           <pointsize>12</pointsize>
-           <bold>true</bold>
-          </font>
-         </property>
-         <property name="text">
-          <string>ذخیره</string>
-         </property>
-        </widget>
-       </item>
       </layout>
      </item>
      <item row="1" column="0" colspan="2">

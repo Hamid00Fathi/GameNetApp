@@ -1,20 +1,60 @@
 from PyQt6.QtWidgets import QApplication, QMessageBox, QDialog, QVBoxLayout, QLabel, QLineEdit, QPushButton
-import requests
+from PyQt6.QtGui import QIcon
 import sys
 import os
+import requests
 from datetime import datetime
-import jdatetime
+
 from windows.main_window import MainWindow
 from database import create_tables
 from windows.theme import apply_dark_theme
-from PyQt6.QtGui import QIcon
-
 
 API_BASE = "https://gamenet-server-mongo-production.up.railway.app"
 
-mode = "online"
-password = ""
 
+# ---------------------------------------------------------
+# لاگین واقعی (فقط چک یوزرنیم + پسورد)
+# ---------------------------------------------------------
+def check_login(username, password):
+    try:
+        r = requests.post(
+            f"{API_BASE}/login",
+            json={"username": username, "password": password},
+            timeout=5
+        )
+
+        if r.status_code == 200:
+            return True
+        return False
+
+    except:
+        return False
+
+
+# ---------------------------------------------------------
+# چک اشتراک آنلاین
+# ---------------------------------------------------------
+def check_subscription(username):
+    try:
+        r = requests.get(f"{API_BASE}/subscription/{username}", timeout=5)
+        data = r.json()
+
+        expire_date = data.get("expireDate")
+        active = data.get("active")
+
+        if expire_date is None:
+            return "inactive", None, 0
+
+        expire_dt = datetime.strptime(expire_date, "%Y-%m-%d")
+        today = datetime.now()
+        days_left = (expire_dt - today).days + 1
+
+        if active:
+            return "active", expire_date, days_left
+        return "inactive", expire_date, days_left
+
+    except:
+        return "error", None, None
 
 
 # ---------------------------------------------------------
@@ -22,8 +62,7 @@ password = ""
 # ---------------------------------------------------------
 def check_license_status(username):
     try:
-        url = f"{API_BASE}/license/status/{username}"
-        r = requests.get(url, timeout=5)
+        r = requests.get(f"{API_BASE}/license/status/{username}", timeout=5)
         data = r.json()
 
         if not data.get("ok"):
@@ -35,63 +74,20 @@ def check_license_status(username):
         return False
 
     except:
-        return True   # اگر اینترنت قطع باشد ولی فایل لایسنس هست → اجازه بده آفلاین اجرا شود
+        return True  # آفلاین مود نباید به اینترنت وابسته باشد
 
 
-# ---------------------------------------------------------
-# چک اشتراک آنلاین
-# ---------------------------------------------------------
-def check_subscription(username):
-    try:
-        url = f"{API_BASE}/subscription/{username}"
-        r = requests.get(url, timeout=5)
-        data = r.json()
-
-        expire_date = data.get("expireDate")
-        active = data.get("active")
-
-        if expire_date is None:
-            return "inactive", None, 0
-
-        expire_dt = datetime.strptime(expire_date, "%Y-%m-%d")
-
-        # تاریخ امروز
-        today = datetime.now()
-
-        delta = expire_dt - today
-        days_left = delta.days + 1
-
-        if active:
-            return "active", expire_date, days_left
-        else:
-            return "inactive", expire_date, days_left
-
-    except:
-        return "error", None, None
-
-def check_login(username, password):
-    try:
-        url = f"{API_BASE}/login"
-        r = requests.post(url, json={"username": username, "password": password}, timeout=5)
-        data = r.json()
-        return data.get("ok", False)
-    except:
-        return False
-    
 # ---------------------------------------------------------
 # پنجره انتخاب حالت ورود
 # ---------------------------------------------------------
 class LoginModeWindow(QDialog):
     def __init__(self):
         super().__init__()
-
         self.setWindowTitle("انتخاب حالت ورود")
         self.resize(300, 150)
 
         layout = QVBoxLayout(self)
-
-        lbl = QLabel("لطفاً حالت ورود را انتخاب کنید:")
-        layout.addWidget(lbl)
+        layout.addWidget(QLabel("لطفاً حالت ورود را انتخاب کنید:"))
 
         btn_online = QPushButton("ورود با اشتراک (آنلاین)")
         btn_offline = QPushButton("ورود با لایسنس (آفلاین)")
@@ -109,7 +105,6 @@ class LoginModeWindow(QDialog):
 class LoginWindow(QDialog):
     def __init__(self):
         super().__init__()
-
         self.setWindowTitle("ورود آنلاین")
         self.resize(300, 150)
 
@@ -133,13 +128,12 @@ class LoginWindow(QDialog):
 
 
 # ---------------------------------------------------------
-# پنجره ورود لایسنس
+# پنجره ورود آفلاین
 # ---------------------------------------------------------
 class LicenseWindow(QDialog):
     def __init__(self):
         super().__init__()
-
-        self.setWindowTitle("ورود با لایسنس")
+        self.setWindowTitle("ورود با لایسنس (آفلاین)")
         self.resize(300, 200)
 
         layout = QVBoxLayout(self)
@@ -177,69 +171,64 @@ create_tables()
 app = QApplication(sys.argv)
 app.setStyleSheet(apply_dark_theme())
 app.setWindowIcon(QIcon("icon.ico"))
+
+window = None
 username = None
-password = ""
-mode = "online"
+password = None
 
-# 1) اگر فایل لایسنس وجود داشت → مستقیم آفلاین
-# 🔥 اولویت: اگر license.key وجود دارد → اول آفلاین مود
-if os.path.exists("license.key"):
-    mode = "offline"
-    username = None
-    password = ""
 
-    # خواندن credentials اگر وجود داشت
-    if os.path.exists("credentials.txt"):
-        with open("credentials.txt", "r") as f:
-            for line in f.read().splitlines():
-                if line.startswith("username="):
-                    username = line.split("=", 1)[1].strip()
-                if line.startswith("password="):
-                    password = line.split("=", 1)[1].strip()
+# ---------------------------------------------------------
+# ۱) ورود اتوماتیک آفلاین
+# ---------------------------------------------------------
+if os.path.exists("license.key") and os.path.exists("credentials.txt"):
+    with open("credentials.txt", "r") as f:
+        lines = f.read().splitlines()
+        for line in lines:
+            if line.startswith("username="):
+                username = line.split("=")[1].strip()
+            if line.startswith("password="):
+                password = line.split("=")[1].strip()
 
-    # 🔥 چک خراب بودن credentials
-    if not username or not password:
-        username = None
-        password = None
-
-    # 🔥 چک پسورد + چک لایسنس
-    if username and password and check_login(username, password) and check_license_status(username):
+    if username and password and check_license_status(username):
         window = MainWindow(mode="offline", username=username)
         window.gamenet_password = password
         window.lblSubscriptionInfo.setText("حالت آفلاین فعال است")
         window.show()
         sys.exit(app.exec())
 
-# 2) اگر credentials.txt وجود دارد → تلاش برای ورود آنلاین بدون سوال
-if os.path.exists("credentials.txt"):
+
+# ---------------------------------------------------------
+# ۲) ورود اتوماتیک آنلاین
+# ---------------------------------------------------------
+if window is None and os.path.exists("credentials.txt"):
     with open("credentials.txt", "r") as f:
-        for line in f.read().splitlines():
+        lines = f.read().splitlines()
+        for line in lines:
             if line.startswith("username="):
-                username = line.split("=", 1)[1].strip()
+                username = line.split("=")[1].strip()
             if line.startswith("password="):
-                password = line.split("=", 1)[1].strip()
+                password = line.split("=")[1].strip()
 
-    # اگر فایل خراب بود (یوزرنیم یا پسورد خالی بود)
-    if not username or not password:
-        username = None
-        password = None
+    if username and password and check_login(username, password):
+        status, expire_date, days_left = check_subscription(username)
 
-    # حالا اگر فایل سالم بود، چک لاگین انجام بده
-    if username:
-        if not check_login(username, password):
-            QMessageBox.critical(None, "خطا", "نام کاربری یا رمز اشتباه است")
+        if status == "active":
+            window = MainWindow(mode="online", username=username)
+            window.gamenet_password = password
+            window.lblSubscriptionInfo.setText(f"مانده اشتراک: {days_left} روز | پایان: {expire_date}")
+            window.show()
+            sys.exit(app.exec())
 
-            # فایل خراب را حذف کن
-            try:
-                os.remove("credentials.txt")
-            except:
-                pass
 
-            sys.exit()
-
-# ۳) اگر نه credentials معتبر بود، نه لایسنس → پنجره انتخاب حالت
+# ---------------------------------------------------------
+# ۳) انتخاب حالت ورود
+# ---------------------------------------------------------
 mode_window = LoginModeWindow()
 choice = mode_window.exec()
+
+if choice != 1 and choice != 2:
+    sys.exit()
+
 
 # ---------------------------------------------------------
 # حالت آنلاین
@@ -251,16 +240,20 @@ if choice == 1:
 
     username, password = login.get_data()
 
+    if not check_login(username, password):
+        QMessageBox.critical(None, "خطا", "نام کاربری یا رمز ورود اشتباه است.")
+        sys.exit()
+
     status, expire_date, days_left = check_subscription(username)
 
-    if not check_login(username, password):
-        QMessageBox.critical(None, "خطا", "نام کاربری یا رمز اشتباه است")
+    if status == "error":
+        QMessageBox.critical(None, "خطا", "اتصال اینترنت برقرار نیست.")
+        sys.exit()
 
     if status != "active":
         QMessageBox.critical(None, "خطا", "اشتراک فعال نیست.")
         sys.exit()
 
-    # ذخیره credentials
     with open("credentials.txt", "w") as f:
         f.write(f"username={username}\n")
         f.write(f"password={password}\n")
@@ -282,36 +275,39 @@ if choice == 2:
 
     username, password, license_key = lic_win.get_data()
 
-    # 🔥 چک پسورد آفلاین با credentials.txt
+    # اگر credentials.txt وجود دارد → باید یوزرنیم و پسورد یکی باشد
     if os.path.exists("credentials.txt"):
         saved_user = None
         saved_pass = None
 
         with open("credentials.txt", "r") as f:
-            for line in f.read().splitlines():
+            lines = f.read().splitlines()
+            for line in lines:
                 if line.startswith("username="):
-                    saved_user = line.split("=", 1)[1].strip()
+                    saved_user = line.split("=")[1].strip()
                 if line.startswith("password="):
-                    saved_pass = line.split("=", 1)[1].strip()
+                    saved_pass = line.split("=")[1].strip()
 
-        if password != saved_pass:
-            QMessageBox.critical(None, "خطا", "رمز ورود اشتباه است.")
+        if username != saved_user or password != saved_pass:
+            QMessageBox.critical(None, "خطا", "نام کاربری یا رمز ورود اشتباه است.")
             sys.exit()
 
-    # تلاش برای چک لایسنس از سرور
+    # چک لایسنس از سرور
     try:
-        r = requests.post(f"{API_BASE}/license/verify", json={"username": username, "key": license_key}, timeout=5)
+        r = requests.post(
+            f"{API_BASE}/license/verify",
+            json={"username": username, "key": license_key},
+            timeout=5
+        )
         data = r.json()
 
         if not data.get("valid"):
             QMessageBox.critical(None, "خطا", "لایسنس معتبر نیست.")
             sys.exit()
 
-        # ذخیره فایل لایسنس
         with open("license.key", "w") as f:
             f.write(license_key)
 
-        # ذخیره credentials
         with open("credentials.txt", "w") as f:
             f.write(f"username={username}\n")
             f.write(f"password={password}\n")
@@ -323,17 +319,12 @@ if choice == 2:
         sys.exit(app.exec())
 
     except:
-        # اگر اینترنت قطع بود → فقط فایل لایسنس را چک کن
-        if os.path.exists("license.key"):
-            with open("credentials.txt", "w") as f:
-                f.write(f"username={username}\n")
-                f.write(f"password={password}\n")
-
+        if os.path.exists("license.key") and os.path.exists("credentials.txt"):
             window = MainWindow(mode="offline", username=username)
             window.gamenet_password = password
             window.lblSubscriptionInfo.setText("حالت آفلاین فعال است (بدون اینترنت)")
             window.show()
             sys.exit(app.exec())
-        else:
-            QMessageBox.critical(None, "خطا", "اتصال اینترنت برقرار نیست و فایل لایسنس موجود نیست.")
-            sys.exit()
+
+        QMessageBox.critical(None, "خطا", "اتصال اینترنت برقرار نیست و فایل لایسنس موجود نیست.")
+        sys.exit()

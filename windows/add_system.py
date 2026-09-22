@@ -45,4 +45,4 @@ class AddSystemWindow(QWidget):
             
 
         except Exception as e:
-            self.statusLabel.setText(f"خطا: {e}")
+            QMessageBox.critical(self , "خطا" , "خطایی در اضافه کردن سیستم رخ داد لطفا دوباره تلاش کنید")

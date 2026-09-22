@@ -27,14 +27,22 @@ class SnackListWindow(QWidget):
         if not ok1 or name.strip() == "":
             return
 
+         # چک تکراری بودن نام خوراکی
+        conn = sqlite3.connect("gamenet.db")
+        cur = conn.cursor()
+        cur.execute("SELECT id FROM snacks WHERE name = ?", (name.strip(),))
+        exists = cur.fetchone()
+        if exists:
+            QMessageBox.warning(self, "خطا!", "این خوراکی قبلاً ثبت شده است")
+            conn.close()
+            return
+
         price_str, ok2 = QInputDialog.getText(self, "افزودن خوراکی", "قیمت را وارد کنید:", text="0")
         if not ok2:
             return
 
         price = int(price_str.replace(",", ""))
 
-        conn = sqlite3.connect("gamenet.db")
-        cur = conn.cursor()
         cur.execute("INSERT INTO snacks (name, price) VALUES (?, ?)", (name, price))
         conn.commit()
         conn.close()

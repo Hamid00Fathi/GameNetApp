@@ -94,6 +94,8 @@ class AddSnackToSystem(QWidget):
 
         filtered = []
         for sid, name, price in self.snacks:
+            if sid in self.selected_ids:
+                continue
             if text in name.lower():
                 filtered.append((sid, name, price))
 

@@ -445,6 +445,7 @@ class MainWindow(QMainWindow):
 
     def safe_update_systems(self):
         try:
+            self.detect_power_loss()
             self.update_systems_light()
         except:
             try:
@@ -494,14 +495,8 @@ class MainWindow(QMainWindow):
         conn.close()
 
     def load_systems(self):
-        # 1) آپدیت هر ثانیه
         with sqlite3.connect("gamenet.db") as conn:
             cur = conn.cursor()
-            cur.execute("""
-                UPDATE systems
-                SET last_update_time=?
-                WHERE active IN (1, 2)
-            """, (datetime.now().strftime("%Y-%m-%d %H:%M:%S"),))
 
             # 2) گرفتن سیستم‌ها
             systems = get_systems()
@@ -509,7 +504,7 @@ class MainWindow(QMainWindow):
             self.systemTable.setRowCount(len(systems))
 
             for row, sys in enumerate(systems):
-                sys_id, name, active, start_time, elapsed, cost , custoer_id , note = sys
+                sys_id, name, active, start_time, elapsed, cost , customer_id , note = sys
 
                 # یادداشت
                 note_btn = QPushButton()

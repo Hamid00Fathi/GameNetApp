@@ -3,6 +3,7 @@ from PyQt6 import uic
 from PyQt6.QtWidgets import QWidget, QTableWidgetItem, QMessageBox, QInputDialog
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QColor
+from customer_repository import customer_code_exists
 
 class CustomerListWindow(QWidget):
     def __init__(self):
@@ -17,7 +18,6 @@ class CustomerListWindow(QWidget):
 
 
         self.customerTable.verticalHeader().setVisible(False)
-        self.systemTable.verticalHeader().setDefaultSectionSize(50)
 
         self.customerTable.itemSelectionChanged.connect(self.select_customer)
         self.selected_customer_id = None
@@ -136,16 +136,20 @@ class CustomerListWindow(QWidget):
 
         name, family, code = customer
 
-        new_name, ok1 = QInputDialog.getText(self, "ویرایش نام", "نام جدید:", text=name)
+        new_name, ok1 = QInputDialog.getText(self, "ویرایش نام", "نام جدید:", text=str(name))
         if not ok1:
             return
 
-        new_family, ok2 = QInputDialog.getText(self, "ویرایش فامیل", "فامیل جدید:", text=family)
+        new_family, ok2 = QInputDialog.getText(self, "ویرایش فامیل", "فامیل جدید:", text=str(family))
         if not ok2:
             return
 
-        new_code, ok3 = QInputDialog.getText(self, "ویرایش کد", "کد جدید:", text=code)
+        new_code, ok3 = QInputDialog.getText(self, "ویرایش کد", "کد جدید:", text=str(code))
         if not ok3:
+            return
+
+        if new_code != code and customer_code_exists(new_code):
+            QMessageBox.warning(self, "خطا", "این کد قبلاً ثبت شده است")
             return
 
         conn = sqlite3.connect("gamenet.db")

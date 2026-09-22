@@ -17,21 +17,15 @@ class SelectUsernameWindow(QDialog):
         self.password = None
         self.main_window = None
 
-        self.saveBtn.clicked.connect(self.save_credentials)
         self.linkBtn.clicked.connect(self.show_link)
 
-        self.load_saved_credentials()
+        # فقط نمایش اطلاعاتی که MainWindow ست کرده
+        self.load_credentials_from_main()
 
-    # -----------------------------
-    # بارگذاری یوزرنیم + پسورد از فایل
-    # -----------------------------
-    def load_saved_credentials(self):
-        if os.path.exists("credentials.txt"):
-            with open("credentials.txt", "r", encoding="utf-8") as f:
-                lines = f.read().split("\n")
-                if len(lines) >= 2:
-                    self.username = lines[0].split("=")[1].strip()
-                    self.password = lines[1].split("=")[1].strip()
+    def load_credentials_from_main(self):
+        if self.main_window:
+            self.username = self.main_window.username
+            self.password = self.main_window.gamenet_password
 
             if self.username:
                 self.txtUsername.setText(self.username)
@@ -41,54 +35,16 @@ class SelectUsernameWindow(QDialog):
                 self.txtPassword.setText(self.password)
                 self.txtPassword.setEnabled(False)
 
-            if self.username and self.password:
-                self.saveBtn.setEnabled(False)
-
-                # انتقال به MainWindow
-                if self.main_window:
-                    self.main_window.username = self.username
-                    self.main_window.gamenet_password = self.password
-
-    # -----------------------------
-    # ذخیره یوزرنیم + پسورد
-    # -----------------------------
-    def save_credentials(self):
-        username = self.txtUsername.text().strip()
-        password = self.txtPassword.text().strip()
-
-        if username == "" or password == "":
-            QMessageBox.warning(self, "خطا", "یوزرنیم و پسورد باید وارد شوند.")
-            return
-
-        self.username = username
-        self.password = password
-
-        # ذخیره در فایل
-        with open("credentials.txt", "w", encoding="utf-8") as f:
-            f.write("username=" + username + "\n" + "password=" + password)
-
-        # جلوگیری از تغییر دوباره
-        self.txtUsername.setEnabled(False)
-        self.txtPassword.setEnabled(False)
-        self.saveBtn.setEnabled(False)
-
-        QMessageBox.information(self, "ذخیره شد", "یوزرنیم و پسورد ذخیره شدند.")
-
-        # انتقال به MainWindow
-        if self.main_window:
-            self.main_window.username = self.username
-            self.main_window.gamenet_password = self.password
-
-    # -----------------------------
-    # نمایش لینک سایت
-    # -----------------------------
     def show_link(self):
         if not self.username:
-            QMessageBox.warning(self, "خطا", "ابتدا یوزرنیم را ذخیره کنید.")
+            QMessageBox.warning(self, "خطا", "یوزرنیم هنوز دریافت نشده.")
             return
 
-        link = f"https://gamenet-web.onrender.com/login.html"
+        link = "https://gamenet-web.onrender.com/login.html"
 
-        site_link = QInputDialog(self)
-        site_link.getText("لینک سایت", "لینک مخصوص شما:",text=link)
-        site_link.resize(400 , 100)
+        dlg = QInputDialog(self)
+        dlg.setWindowTitle("لینک سایت")
+        dlg.setLabelText("لینک مخصوص شما:")
+        dlg.setTextValue(link)
+        dlg.resize(400, 120)
+        dlg.exec()

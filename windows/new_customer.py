@@ -1,6 +1,7 @@
 from PyQt6 import uic
 from PyQt6.QtWidgets import QWidget , QMessageBox
 from customer_repository import add_customer
+from customer_repository import add_customer , customer_code_exists
 
 class NewCustomerWindow(QWidget):
     def __init__(self):
@@ -23,6 +24,10 @@ class NewCustomerWindow(QWidget):
 
         if not name or not family or not code:
             QMessageBox.warning(self, "خطا" , "لطفا فیلد های ضروری را پر کنید")
+            return
+
+        if customer_code_exists(code):
+            QMessageBox.warning(self, "خطا", "این کد مشتری قبلاً ثبت شده است")
             return
 
         if self.balanceCheckBox.isChecked():

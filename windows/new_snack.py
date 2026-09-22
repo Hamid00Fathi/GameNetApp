@@ -23,7 +23,7 @@ class NewSnackWindow(QWidget):
         name = self.nameInput.text().strip()
         price  = self.priceInput.value()
 
-        if name == "":
+        if not name:
             QMessageBox.warning(self , "خطا" , "نام خوراکی نمیتواند خالی باشد")
             return
         if price <= 0:
