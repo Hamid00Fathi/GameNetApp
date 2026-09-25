@@ -42,6 +42,7 @@ def get_balance(customer_id):
 
     cursor.execute("SELECT balance FROM customers WHERE id = ?" , (customer_id , ))
     result = cursor.fetchone()
+    
     balance = result[0] if result else 0
 
     conn.close()

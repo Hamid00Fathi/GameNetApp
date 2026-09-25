@@ -10,7 +10,7 @@ class AddSnackToSystem(QWidget):
         if getattr(sys, 'frozen', False):
             base_path = sys._MEIPASS
         else:
-            base_path = os.path.dirname(__file__)
+            base_path = os.path.dirname(os.path.dirname(__file__))
 
         uic.loadUi(os.path.join(base_path, "ui", "add_snack_to_system.ui"), self)
 
@@ -179,7 +179,6 @@ class AddSnackToSystem(QWidget):
             # گرفتن قیمت
             cur.execute("SELECT price FROM snacks WHERE id=?", (sid,))
             price = cur.fetchone()[0]
-
             total_cost += price * qty
 
             # چک کردن وجود رکورد

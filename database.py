@@ -53,8 +53,8 @@ def create_tables():
             start_time TEXT,
             end_time TEXT,
             paused_seconds INTEGER DEFAULT 0,
-            cost INTEGER DEFAULT 0,          -- هزینهٔ زمان بازی
-            snack_cost INTEGER DEFAULT 0,    -- هزینهٔ خوراکی‌ها
+            cost INTEGER DEFAULT 0,
+            snack_cost INTEGER DEFAULT 0,
             FOREIGN KEY(system_id) REFERENCES systems(id),
             FOREIGN KEY(customer_id) REFERENCES customers(id)
         )
@@ -87,7 +87,6 @@ def get_systems():
 
     for sys_id, name, price_per_hour, active, customer_id, sys_cost, note in systems_raw:
 
-        # گرفتن سشن فعال
         cur.execute("""
             SELECT start_time, paused_seconds, snack_cost
             FROM sessions
@@ -100,21 +99,22 @@ def get_systems():
 
             if active == 1 and start_time:
                 start_dt = datetime.strptime(start_time, "%Y-%m-%d %H:%M:%S")
-                elapsed_seconds = (datetime.now() - start_dt).seconds
+                elapsed_seconds = int((datetime.now() - start_dt).total_seconds())
                 total_seconds = paused_seconds + elapsed_seconds
             else:
                 total_seconds = paused_seconds
 
-            minutes = total_seconds // 60
-            seconds = total_seconds % 60
-            elapsed = f"{minutes:02d}:{seconds:02d}"
+            h = total_seconds // 3600
+            m = (total_seconds % 3600) // 60
+            s = total_seconds % 60
+            elapsed = f"{h:02d}:{m:02d}:{s:02d}"
 
-            cost_time = int((total_seconds / 60) * (price_per_hour / 60))
+            cost_time = int(total_seconds * (price_per_hour / 3600))
             cost = cost_time + (snack_cost or 0) + sys_cost
 
         else:
             start_time = None
-            elapsed = "00:00"
+            elapsed = "00:00:00"
             cost = sys_cost
 
         systems.append((sys_id, name, active, start_time, elapsed, cost, customer_id, note))

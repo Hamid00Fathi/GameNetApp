@@ -12,7 +12,7 @@ class NewSnackWindow(QWidget):
         if getattr(sys, 'frozen', False):
             base_path = sys._MEIPASS
         else:
-            base_path = os.path.dirname(__file__)
+            base_path = os.path.dirname(os.path.dirname(__file__))
 
         uic.loadUi(os.path.join(base_path, "ui", "new_snack.ui"), self)
 

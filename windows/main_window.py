@@ -1,6 +1,6 @@
 from PyQt6 import uic
 from PyQt6.QtWidgets import *
-from PyQt6.QtGui import QIcon , QColor
+from PyQt6.QtGui import QIcon , QColor , QPixmap
 from PyQt6.QtCore import *
 from database import get_systems
 from windows.add_system import AddSystemWindow
@@ -15,12 +15,14 @@ from datetime import datetime
 import sqlite3 , requests
 import re
 import sys , os
+import time
 
 
 
 
 class SenderThread(QThread):
-    finished = pyqtSignal(str)
+    # emits (success: bool, response_text: str)
+    finished = pyqtSignal(bool, str)
 
     def __init__(self, url, data):
         super().__init__()
@@ -31,9 +33,10 @@ class SenderThread(QThread):
         import requests
         try:
             r = requests.post(self.url, json=self.data, timeout=5)
-            self.finished.emit(r.text)
+            ok = (200 <= r.status_code < 300)
+            self.finished.emit(ok, r.text)
         except Exception as e:
-            self.finished.emit(f"خطا: {e}")
+            self.finished.emit(False, str(e))
 
 
 class SubscriptionChecker(QThread):
@@ -65,11 +68,19 @@ class MainWindow(QMainWindow):
         if getattr(sys, 'frozen', False):
             base_path = sys._MEIPASS
         else:
-            base_path = os.path.dirname(__file__)
+            base_path = os.path.dirname(os.path.dirname(__file__))
 
         uic.loadUi(os.path.join(base_path, "ui", "main_window.ui"), self)
 
+        self.last_update_counter = 0
+        try:
+            with sqlite3.connect("gamenet.db") as _conn:
+                _conn.execute("PRAGMA journal_mode=WAL;")
+        except Exception:
+            pass
 
+        self.icon_cache = {}
+        self.preload_icons()
 
         # ------------------------------
         # Mode & Username
@@ -110,10 +121,17 @@ class MainWindow(QMainWindow):
         self.btnUsername.triggered.connect(self.open_user_name)
 
         # ------------------------------
+        # Initial Load
+        # ------------------------------
+        self.load_systems()
+
+        self.detect_power_loss()
+
+        # ------------------------------
         # Timers
         # ------------------------------
         self.timer = QTimer()
-        self.timer.timeout.connect(self.safe_update_systems)
+        self.timer.timeout.connect(self.update_tick)
         self.timer.start(1000)
 
         self.subscription_timer = QTimer()
@@ -128,15 +146,6 @@ class MainWindow(QMainWindow):
             self.start_sender_timer()
         else:
             self.disable_online_features()
-
-        # ------------------------------
-        # Initial Load
-        # ------------------------------
-        self.load_systems()
-
-    # ============================================================
-    # MODE HANDLING
-    # ============================================================
 
     
 
@@ -251,30 +260,38 @@ class MainWindow(QMainWindow):
         self.sub_checker.error.connect(self.handle_subscription_error)
         self.sub_checker.start()
 
+
     def send_update(self):
         if self.mode == "offline":
             return
 
-        if not self.username or not getattr(self, "gamenet_password"):
+        if not self.username or not getattr(self, "gamenet_password", None):
             return
 
         systems_json = self.build_status_json()
 
-        last_update = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
         payload = {
             "password": self.gamenet_password,
             "systems": systems_json,
-            "lastUpdate": last_update
+            "lastUpdate": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         }
-
-        self.lblLastUpdate.setText(f"آخرین آپدیت: {last_update}")
 
         url = f"https://gamenet-server-mongo-production.up.railway.app/status/{self.username}"
 
+        # شروع thread و اتصال به handler
         self.thread = SenderThread(url, payload)
-        self.thread.finished.connect(lambda r: print("نتیجه ارسال:", r))
+        self.thread.finished.connect(self._on_send_finished)
         self.thread.start()
+
+    def _on_send_finished(self, success: bool, response_text: str):
+        if success:
+            last_update = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            self.lblLastUpdate.setText(f"آخرین آپدیت: {last_update}")
+        else:
+            # ارسال ناموفق: لاگ کن؛ برچسب آپدیت تغییر نکند
+            print("ارسال به سرور ناموفق:", response_text)
+            # اگر می‌خواهی پیام کوتاه در statusbar نمایش دهی:
+            # self.statusbar.showMessage("ارسال وضعیت ناموفق شد (اینترنت قطع یا خطا)", 5000)
 
     def build_status_json(self):
         conn = sqlite3.connect("gamenet.db")
@@ -318,7 +335,7 @@ class MainWindow(QMainWindow):
 
                 if start_time:
                     start_dt = datetime.strptime(start_time, "%Y-%m-%d %H:%M:%S")
-                    elapsed_seconds = paused_seconds + (datetime.now() - start_dt).seconds
+                    elapsed_seconds = paused_seconds + int((datetime.now() - start_dt).total_seconds())
                 else:
                     elapsed_seconds = paused_seconds
 
@@ -370,7 +387,7 @@ class MainWindow(QMainWindow):
         conn.close()
         return data
 
-    def detect_power_loss(self):
+    def detect_power_loss(self, threshold_seconds=5):
         conn = sqlite3.connect("gamenet.db")
         cur = conn.cursor()
 
@@ -378,16 +395,22 @@ class MainWindow(QMainWindow):
         systems = cur.fetchall()
 
         now = datetime.now()
+        power_loss_detected = False
 
-        for sys_id, active, last_update in systems:
-            if not last_update:
+        for sys_id, active, last_update_time in systems:
+            if not last_update_time:
                 continue
 
-            last_dt = datetime.strptime(last_update, "%Y-%m-%d %H:%M:%S")
-            diff = (now - last_dt).seconds
+            try:
+                last_dt = datetime.strptime(last_update_time, "%Y-%m-%d %H:%M:%S")
+            except Exception:
+                # فرمت تاریخ نامعتبر → نادیده بگیر
+                continue
 
-            # اگر بیش از 5 ثانیه گذشته یعنی برنامه ناگهانی بسته شده
-            if diff > 5:
+            diff = int((now - last_dt).total_seconds())
+
+            if diff > threshold_seconds:
+                power_loss_detected = True
 
                 # گرفتن سشن فعال
                 cur.execute("""
@@ -398,29 +421,36 @@ class MainWindow(QMainWindow):
                 session = cur.fetchone()
 
                 if session:
-                    session_id, start_time, paused_seconds = session
+                    session_id = session[0]
+                    start_time = session[1]
+                    paused_seconds = session[2] or 0
 
-                    # محاسبه زمان سپری‌شده تا لحظهٔ قطع برق
                     if start_time:
-                        start_dt = datetime.strptime(start_time, "%Y-%m-%d %H:%M:%S")
-                        elapsed_seconds = (last_dt - start_dt).seconds
+                        try:
+                            start_dt = datetime.strptime(start_time, "%Y-%m-%d %H:%M:%S")
+                            elapsed_until_last = int((last_dt - start_dt).total_seconds())
+                            if elapsed_until_last < 0:
+                                elapsed_until_last = 0
+                        except Exception:
+                            elapsed_until_last = 0
                     else:
-                        elapsed_seconds = 0
+                        elapsed_until_last = 0
 
-                    total_seconds = paused_seconds + elapsed_seconds
+                    total_seconds = paused_seconds + elapsed_until_last
 
-                    # ❗ فقط Pause می‌کنیم، سشن را نمی‌بندیم
                     cur.execute("""
                         UPDATE sessions
                         SET paused_seconds=?, start_time=NULL
                         WHERE id=?
                     """, (total_seconds, session_id))
 
-                # ❗ سیستم را Pause می‌کنیم، نه آزاد
+                # سیستم را به حالت paused بگذار
                 cur.execute("UPDATE systems SET active=2 WHERE id=?", (sys_id,))
 
         conn.commit()
         conn.close()
+
+        return power_loss_detected
 
     def status_item(self , active):
         item = QTableWidgetItem("")
@@ -443,56 +473,78 @@ class MainWindow(QMainWindow):
 
         return (alpha, num)
 
-    def safe_update_systems(self):
+    def update_tick(self):
         try:
-            self.detect_power_loss()
-            self.update_systems_light()
-        except:
+            t0 = time.time()
+
+            # 1) هر 5 ثانیه یک‌بار last_update_time را بنویس
+            self.last_update_counter += 1
+            if self.last_update_counter >= 5:
+                try:
+                    with sqlite3.connect("gamenet.db", timeout=5) as conn:
+                        cur = conn.cursor()
+                        cur.execute(
+                            "UPDATE systems SET last_update_time=? WHERE active IN (1, 2)",
+                            (datetime.now().strftime("%Y-%m-%d %H:%M:%S"),)
+                        )
+                        conn.commit()
+                except Exception as e:
+                    print("خطا در آپدیت last_update_time:", e)
+                finally:
+                    self.last_update_counter = 0
+
+            # 2) خواندن کلی systems (یک SELECT ساده)
             try:
-                self.load_systems()
-            except:
-                return  
+                conn = sqlite3.connect("gamenet.db", timeout=5)
+                cur = conn.cursor()
+                cur.execute("SELECT id FROM systems")
+                db_ids = {r[0] for r in cur.fetchall()}
+                conn.close()
+            except Exception as e:
+                print("خطا در خواندن systems در update_tick:", e)
+                db_ids = set()
 
-            try:
-                self.update_systems_light()
-            except:
-                return
-
-
-    def update_systems_light(self):
-        systems = get_systems()
-        systems.sort(key=lambda s: self.safe_sort_key(s[1]))
-
-        conn = sqlite3.connect("gamenet.db")
-        cur = conn.cursor()
-
-        for row, sys in enumerate(systems):
-            sys_id, name, active, start_time, elapsed, cost, customer_id, note = sys
-
-            # زمان سپری‌شده
-            self.systemTable.item(row, 3).setText(elapsed)
-
-            # هزینه
-            self.systemTable.item(row, 2).setText(f"{cost:,}")
-
-            # نام مشتری
-            cur.execute("""
-                SELECT customers.name, customers.family, customers.code
-                FROM systems
-                LEFT JOIN customers ON customers.id = systems.customer_id
-                WHERE systems.id=?
-            """, (sys_id,))
-            customer = cur.fetchone()
-
-
-            if customer and customer[0] is not None:
-                cname = f"{customer[0]} {customer[1]} - {customer[2]}"
+            # 3) اگر تعداد یا شناسه‌ها تغییر کرده بود -> full reload
+            current_ids = set(self.system_row_map.keys()) if hasattr(self, "system_row_map") else set()
+            if db_ids != current_ids:
+                # structural change: اضافه/حذف سیستم
+                try:
+                    self.load_systems()
+                except Exception as e:
+                    print("خطا در load_systems هنگام تغییر ساختار:", e)
             else:
-                cname = "متفرقه"
 
-            self.systemTable.item(row, 1).setText(cname)
+                try:
+                    if hasattr(self, "update_ui_tick"):
+                        self.update_ui_tick()
+                except Exception as e:
+                    print("خطا در update_ui_tick:", e)
 
-        conn.close()
+        except Exception as e:
+            print("خطای کلی در update_tick:", e)
+
+    def get_icon(self, path):
+        if path in self.icon_cache:
+            return self.icon_cache[path]
+        pix = QPixmap(path)
+        icon = QIcon(pix)
+        self.icon_cache[path] = icon
+        return icon
+
+    def preload_icons(self):
+        icons = [
+            "icons/start.png",
+            "icons/stop.png",
+            "icons/checkout.png",
+            "icons/snack.png",
+            "icons/edit.png",
+            "icons/note.png"
+        ]
+        for p in icons:
+            try:
+                self.get_icon(p)
+            except Exception:
+                pass
 
     def load_systems(self):
         with sqlite3.connect("gamenet.db") as conn:
@@ -508,7 +560,7 @@ class MainWindow(QMainWindow):
 
                 # یادداشت
                 note_btn = QPushButton()
-                note_btn.setIcon(QIcon("icons/note.png"))
+                note_btn.setIcon(self.get_icon("icons/note.png"))
                 note_btn.setIconSize(QSize(28, 28))
                 note_btn.setStyleSheet("border: none;")
                 note_btn.clicked.connect(lambda _, sid=sys_id: self.note_system(sid))
@@ -533,7 +585,7 @@ class MainWindow(QMainWindow):
 
                 # دکمه استارت
                 start_btn = QPushButton()
-                start_btn.setIcon(QIcon("icons/start.png"))
+                start_btn.setIcon(self.get_icon("icons/start.png"))
                 start_btn.setIconSize(QSize(28, 28))
                 start_btn.setStyleSheet("border: none;")
                 start_btn.clicked.connect(lambda _, sid=sys_id: self.start_system(sid))
@@ -550,7 +602,7 @@ class MainWindow(QMainWindow):
 
                 # دکمه استاپ
                 stop_btn = QPushButton()
-                stop_btn.setIcon(QIcon("icons/stop.png"))
+                stop_btn.setIcon(self.get_icon("icons/stop.png"))
                 stop_btn.setIconSize(QSize(30, 30))
                 stop_btn.setStyleSheet("border: none;")
                 stop_btn.clicked.connect(lambda _, sid=sys_id: self.stop_system(sid))
@@ -559,7 +611,7 @@ class MainWindow(QMainWindow):
 
                 # دکمه تغییر سیستم
                 change_btn = QPushButton()
-                change_btn.setIcon(QIcon("icons/edit.png"))
+                change_btn.setIcon(self.get_icon("icons/edit.png"))
                 change_btn.setIconSize(QSize(30, 30))
                 change_btn.setStyleSheet("border: none;")
                 change_btn.clicked.connect(lambda _, sid=sys_id: self.change_system(sid))
@@ -568,7 +620,7 @@ class MainWindow(QMainWindow):
 
                 # دکمه خوراکی
                 snack_btn = QPushButton()
-                snack_btn.setIcon(QIcon("icons/snack.png"))
+                snack_btn.setIcon(self.get_icon("icons/snack.png"))
                 snack_btn.setIconSize(QSize(30, 30))
                 snack_btn.setStyleSheet("border: none;")
                 snack_btn.clicked.connect(lambda _, sid=sys_id: self.add_snack(sid))
@@ -589,7 +641,7 @@ class MainWindow(QMainWindow):
 
                 # دکمه تسویه
                 checkout_btn = QPushButton()
-                checkout_btn.setIcon(QIcon("icons/checkout.png"))
+                checkout_btn.setIcon(self.get_icon("icons/checkout.png"))
                 checkout_btn.setIconSize(QSize(28, 28))
                 checkout_btn.setStyleSheet("border: none;")
                 checkout_btn.clicked.connect(lambda _, sid=sys_id: self.checkout(sid))
@@ -625,6 +677,7 @@ class MainWindow(QMainWindow):
         # گرفتن نوت قبلی
         cur.execute("SELECT note FROM systems WHERE id=?", (sys_id,))
         row = cur.fetchone()
+        
         old_note = row[0] if row else ""
 
         # ساخت پنجره نوت
@@ -669,7 +722,6 @@ class MainWindow(QMainWindow):
         active, customer_id = cur.fetchone()
 
         if active == 2:
-            # ادامه سشن قبلی
             now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
             cur.execute("""
@@ -679,15 +731,20 @@ class MainWindow(QMainWindow):
             """, (sys_id,))
             session_id, paused_seconds = cur.fetchone()
 
-            # Resume
+            # Resume — فقط start_time را آپدیت کن
             cur.execute("""
                 UPDATE sessions
-                SET start_time=?, paused_seconds=?
+                SET start_time=?
                 WHERE id=?
-            """, (now_str, paused_seconds, session_id))
+            """, (now_str, session_id))
 
-            # فعال کردن سیستم
-            cur.execute("UPDATE systems SET active=1 WHERE id=?", (sys_id,))
+            # فعال کردن سیستم + آپدیت last_update_time
+            cur.execute("""
+                UPDATE systems
+                SET active=1, last_update_time=?
+                WHERE id=?
+            """, (now_str, sys_id))
+
             conn.commit()
             conn.close()
 
@@ -826,7 +883,7 @@ class MainWindow(QMainWindow):
 
         if start_time:
             start_dt = datetime.strptime(start_time, "%Y-%m-%d %H:%M:%S")
-            elapsed_seconds = (datetime.now() - start_dt).seconds
+            elapsed_seconds = int((datetime.now() - start_dt).total_seconds())
         else:
             elapsed_seconds = 0
 
@@ -864,7 +921,7 @@ class MainWindow(QMainWindow):
 
         if start_time:
             start_dt = datetime.strptime(start_time, "%Y-%m-%d %H:%M:%S")
-            elapsed_seconds = (datetime.now() - start_dt).seconds
+            elapsed_seconds = ((datetime.now() - start_dt).total_seconds())
         else:
             elapsed_seconds = 0
 
@@ -968,7 +1025,7 @@ class MainWindow(QMainWindow):
         # محاسبه زمان سپری‌شده
         if start_time:
             start_dt = datetime.strptime(start_time, "%Y-%m-%d %H:%M:%S")
-            elapsed_seconds = (datetime.now() - start_dt).seconds
+            elapsed_seconds = int((datetime.now() - start_dt).total_seconds())
         else:
             elapsed_seconds = 0
 
@@ -1070,7 +1127,7 @@ class MainWindow(QMainWindow):
                 # محاسبه زمان جاری
                 if start_time:
                     start_dt = datetime.strptime(start_time, "%Y-%m-%d %H:%M:%S")
-                    elapsed_seconds = (datetime.now() - start_dt).seconds
+                    elapsed_seconds = int((datetime.now() - start_dt).total_seconds())
                 else:
                     elapsed_seconds = 0
 
@@ -1344,10 +1401,8 @@ class MainWindow(QMainWindow):
         self.sender_timer.start(5000)
 
     def open_user_name(self):
-        dlg = SelectUsernameWindow()
-        dlg.main_window = self
-        dlg.load_saved_credentials()
-        dlg.exec()
+        self.selectusername = SelectUsernameWindow()
+        self.selectusername.show()
 
 
 

@@ -5,8 +5,8 @@ def add_system(name, price_per_hour):
     cursor = conn.cursor()
 
     cursor.execute("""
-        INSERT INTO systems (name, price_per_hour)
-        VALUES (?, ?)
+        INSERT INTO systems (name, price_per_hour, last_update_time)
+        VALUES (?, ?, datetime('now'))
     """, (name, price_per_hour))
 
     conn.commit()

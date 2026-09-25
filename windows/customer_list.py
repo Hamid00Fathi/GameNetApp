@@ -12,7 +12,7 @@ class CustomerListWindow(QWidget):
         if getattr(sys, 'frozen', False):
             base_path = sys._MEIPASS
         else:
-            base_path = os.path.dirname(__file__)
+            base_path = os.path.dirname(os.path.dirname(__file__))
 
         uic.loadUi(os.path.join(base_path, "ui", "customer_list.ui"), self)
 
@@ -130,9 +130,6 @@ class CustomerListWindow(QWidget):
         cur.execute("SELECT name, family, code FROM customers WHERE id=?", (self.selected_customer_id,))
         customer = cur.fetchone()
         conn.close()
-
-        if not customer:
-            return
 
         name, family, code = customer
 

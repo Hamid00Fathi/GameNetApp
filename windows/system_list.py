@@ -11,7 +11,7 @@ class System_List(QWidget):
         if getattr(sys, 'frozen', False):
             base_path = sys._MEIPASS
         else:
-            base_path = os.path.dirname(__file__)
+            base_path = os.path.dirname(os.path.dirname(__file__))
 
         uic.loadUi(os.path.join(base_path, "ui", "system_list.ui"), self)
 
@@ -42,9 +42,13 @@ class System_List(QWidget):
             QMessageBox.warning(self, "خطا!" , "قیمت سیستم نباید 0 باشد")
             return
 
-        price = int(price_str.replace("," , ""))
+        try:
+            price = int(price_str.replace("," , ""))
 
-        add_system(name , price)
+            add_system(name , price)
+        except Exception:
+            QMessageBox.warning(self, "خطا", "لطفا مبلغ معتبر وارد کنید")
+            return
 
         self.load_systems()
 
@@ -65,6 +69,7 @@ class System_List(QWidget):
         self.systemTable.setRowCount(len(systems))
         self.systemTable.setColumnCount(4)
         self.systemTable.setHorizontalHeaderLabels(["حذف" , "ویرایش" , "قیمت هر ساعت" , "نام سیستم"])
+        self.systemTable.verticalHeader().setDefaultSectionSize(40)
 
         for row , system in enumerate(systems):
             system_id = system[0]
@@ -150,7 +155,12 @@ class System_List(QWidget):
         if not ok2:
             return
 
-        new_price = int(price_str.replace("," , ""))
+        try:
+            new_price = int(price_str.replace("," , ""))
 
-        update_system(system_id, new_name, new_price)
+            update_system(system_id, new_name, new_price)
+
+        except Exception:
+            QMessageBox.warning(self, "خطا", "لطفا مبلغ معتبر وارد کنید")
+            return
         self.load_systems()

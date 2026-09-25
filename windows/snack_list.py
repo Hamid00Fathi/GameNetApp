@@ -10,7 +10,7 @@ class SnackListWindow(QWidget):
         if getattr(sys, 'frozen', False):
             base_path = sys._MEIPASS
         else:
-            base_path = os.path.dirname(__file__)
+            base_path = os.path.dirname(os.path.dirname(__file__))
 
         uic.loadUi(os.path.join(base_path, "ui", "snack_list.ui"), self)
 
@@ -41,11 +41,17 @@ class SnackListWindow(QWidget):
         if not ok2:
             return
 
-        price = int(price_str.replace(",", ""))
+        try:
 
-        cur.execute("INSERT INTO snacks (name, price) VALUES (?, ?)", (name, price))
-        conn.commit()
-        conn.close()
+
+            price = int(price_str.replace(",", ""))
+
+            cur.execute("INSERT INTO snacks (name, price) VALUES (?, ?)", (name, price))
+            conn.commit()
+            conn.close()
+        except Exception:
+            QMessageBox.warning(self, "خطا", "لطفا مبلغ معتبر وارد کنید")
+            return
 
         self.load_snacks()
 
@@ -59,7 +65,7 @@ class SnackListWindow(QWidget):
         self.snackTable.setRowCount(len(snacks))
         self.snackTable.setColumnCount(4)
         self.snackTable.setHorizontalHeaderLabels(["حذف", "ویرایش", "قیمت", "نام خوراکی"])
-        self.snackTable.verticalHeader().setDefaultSectionSize(55)
+        self.snackTable.verticalHeader().setDefaultSectionSize(40)
 
         for row, snack in enumerate(snacks):
             snack_id = snack[0]
@@ -170,11 +176,14 @@ class SnackListWindow(QWidget):
         if not ok2:
             conn.close()
             return
+        try:
+            new_price = int(price_str.replace(",", ""))
 
-        new_price = int(price_str.replace(",", ""))
-
-        cur.execute("UPDATE snacks SET name=?, price=? WHERE id=?", (new_name, new_price, snack_id))
-        conn.commit()
-        conn.close()
+            cur.execute("UPDATE snacks SET name=?, price=? WHERE id=?", (new_name, new_price, snack_id))
+            conn.commit()
+            conn.close()
+        except Exception:
+            QMessageBox.warning(self, "خطا", "لطفا مبلغ معتبر وارد کنید")
+            return
 
         self.load_snacks()

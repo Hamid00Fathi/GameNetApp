@@ -301,6 +301,10 @@ if choice == 2:
         )
         data = r.json()
 
+        if not check_login(username, password):
+            QMessageBox.critical(None, "خطا", "نام کاربری یا رمز ورود اشتباه است.")
+            sys.exit()        
+
         if not data.get("valid"):
             QMessageBox.critical(None, "خطا", "لایسنس معتبر نیست.")
             sys.exit()
