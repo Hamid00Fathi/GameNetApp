@@ -65,16 +65,19 @@ def check_license_status(username):
         r = requests.get(f"{API_BASE}/license/status/{username}", timeout=5)
         data = r.json()
 
+        # اگر کاربر وجود ندارد
         if not data.get("ok"):
             return False
 
-        if data.get("licenseType") == "offline" and data.get("licenseActive"):
+        # لایسنس باید فعال و آفلاین باشد
+        if data.get("licenseType") == "offline" and data.get("licenseActive") == True:
             return True
 
         return False
 
     except:
-        return True  # آفلاین مود نباید به اینترنت وابسته باشد
+        # اگر اینترنت قطع باشد → فقط در صورتی آفلاین مود فعال شود که فایل لایسنس وجود داشته باشد
+        return os.path.exists("license.key")
 
 
 # ---------------------------------------------------------
@@ -189,6 +192,7 @@ if os.path.exists("license.key") and os.path.exists("credentials.txt"):
             if line.startswith("password="):
                 password = line.split("=")[1].strip()
 
+    # چک واقعی لایسنس
     if username and password and check_license_status(username):
         window = MainWindow(mode="offline", username=username)
         window.gamenet_password = password
@@ -327,8 +331,7 @@ if choice == 2:
             window = MainWindow(mode="offline", username=username)
             window.gamenet_password = password
             window.lblSubscriptionInfo.setText("حالت آفلاین فعال است (بدون اینترنت)")
-            window.show()
-            sys.exit(app.exec())
+            sys.exit()
 
         QMessageBox.critical(None, "خطا", "اتصال اینترنت برقرار نیست و فایل لایسنس موجود نیست.")
         sys.exit()
