@@ -16,6 +16,7 @@ import sqlite3 , requests
 import re
 import sys , os
 import time
+import certifi
 
 
 
@@ -32,7 +33,7 @@ class SenderThread(QThread):
     def run(self):
         import requests
         try:
-            r = requests.post(self.url, json=self.data, timeout=5)
+            r = requests.post(self.url, json=self.data, timeout=5, verify=certifi.where())
             ok = (200 <= r.status_code < 300)
             self.finished.emit(ok, r.text)
         except Exception as e:
@@ -50,7 +51,7 @@ class SubscriptionChecker(QThread):
     def run(self):
         try:
             url = f"https://gamenet-server-mongo-production.up.railway.app/subscription/{self.username}"
-            res = requests.get(url, timeout=6)
+            res = requests.get(url, timeout=6, verify=certifi.where())
             data = res.json()
             self.result.emit(data)
         except Exception as e:
@@ -207,7 +208,27 @@ class MainWindow(QMainWindow):
             print("خطا در قفل نرم‌افزار:")
 
     def handle_subscription_error(self, err):
-        print("خطا در چک اشتراک:")
+        # تشخیص خطای SSL
+        if "SSL" in err or "ssl" in err:
+            QMessageBox.critical(self, "خطای SSL",
+                "ارتباط امن با سرور برقرار نشد!")
+            return
+
+        # تشخیص بلاک شدن توسط فایروال
+        if "Connection" in err or "Failed to establish" in err:
+            QMessageBox.critical(self, "خطای اتصال",
+                "درخواست چک اشتراک ارسال نشد!")
+            return
+
+        # تشخیص Timeout
+        if "timed out" in err or "timeout" in err:
+            QMessageBox.critical(self, "تایم‌اوت",
+                "سرور در زمان مناسب پاسخ نداد!")
+            return
+
+        # خطای ناشناخته
+        QMessageBox.critical(self, "خطای اشتراک",
+            f"خطای غیرمنتظره در چک اشتراک:\n{err}")
 
 
     def handle_subscription_result(self, data):
@@ -288,10 +309,14 @@ class MainWindow(QMainWindow):
             last_update = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             self.lblLastUpdate.setText(f"آخرین آپدیت: {last_update}")
         else:
-            # ارسال ناموفق: لاگ کن؛ برچسب آپدیت تغییر نکند
-            print("ارسال به سرور ناموفق:", response_text)
-            # اگر می‌خواهی پیام کوتاه در statusbar نمایش دهی:
-            # self.statusbar.showMessage("ارسال وضعیت ناموفق شد (اینترنت قطع یا خطا)", 5000)
+            if "SSL" in response_text:
+                self.statusbar.showMessage("خطای SSL در ارسال وضعیت", 5000)
+            elif "Connection" in response_text or "Failed to establish" in response_text:
+                self.statusbar.showMessage("اتصال به سرور برقرار نشد (فایروال؟)", 5000)
+            elif "timeout" in response_text:
+                self.statusbar.showMessage("تایم‌اوت در ارسال وضعیت", 5000)
+            else:
+                self.statusbar.showMessage("ارسال وضعیت ناموفق بود", 5000)
 
     def build_status_json(self):
         conn = sqlite3.connect("gamenet.db")
