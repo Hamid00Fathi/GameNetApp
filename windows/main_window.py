@@ -1917,7 +1917,7 @@ class MainWindow(QMainWindow):
             layout.addWidget(QLabel(f"تعرفه فعلی: {old_rate_name} — {int(old_rate_price):,} تومان/ساعت"))
             system_combo = QComboBox()
             for target_id, _name, _price in target_rows:
-                details = " | ".join(f"{label}: {price:,} " for _rid, _count, price, label in targets[target_id]["options"])
+                details = " | ".join(f"{label}: {price:,} تومان/ساعت" for _rid, _count, price, label in targets[target_id]["options"])
                 system_combo.addItem(f"{targets[target_id]['name']} ({details})", target_id)
             layout.addWidget(QLabel("سیستم مقصد"))
             layout.addWidget(system_combo)
