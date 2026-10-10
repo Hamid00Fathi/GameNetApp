@@ -1044,7 +1044,7 @@ class MainWindow(QMainWindow):
             if customer and customer[0] is not None:
                 cname = f"{customer[0]} {customer[1]} - {customer[2]}"
             else:
-                cname = "متفرقه"
+                cname = "-"
 
             item_customer = QTableWidgetItem(cname)
             item_customer.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -1096,7 +1096,7 @@ class MainWindow(QMainWindow):
                         if first_name and str(first_name).strip() != "":
                             display_text = str(first_name)
                         else:
-                            display_text = "بدون تعرفه"
+                            display_text = "-"
 
                         # ساخت tooltip از همهٔ تعرفه‌ها
                         for r in rates:
@@ -1917,7 +1917,7 @@ class MainWindow(QMainWindow):
             layout.addWidget(QLabel(f"تعرفه فعلی: {old_rate_name} — {int(old_rate_price):,} تومان/ساعت"))
             system_combo = QComboBox()
             for target_id, _name, _price in target_rows:
-                details = " | ".join(f"{label}: {price:,} تومان/ساعت" for _rid, _count, price, label in targets[target_id]["options"])
+                details = " | ".join(f"{label}: {price:,} " for _rid, _count, price, label in targets[target_id]["options"])
                 system_combo.addItem(f"{targets[target_id]['name']} ({details})", target_id)
             layout.addWidget(QLabel("سیستم مقصد"))
             layout.addWidget(system_combo)
@@ -2337,16 +2337,23 @@ class MainWindow(QMainWindow):
                     new_balance = balance - total
                     cur3.execute("UPDATE customers SET balance=? WHERE id=?", (new_balance, customer_id))
                     balance_text = f"<span style='color:red;'>{new_balance:,}</span>" if new_balance < 0 else f"{new_balance:,}"
-                    payment_info = f"کسر از حساب مشتری: {total:,} تومان\nموجودی جدید مشتری: {balance_text} تومان"
+                    payment_info = f"کسر از حساب مشتری: {total:,} تومان<br>موجودی جدید مشتری: {balance_text} تومان"
                 elif rb_custom_amount and rb_custom_amount.isChecked():
                     try:
                         custom_amount = int(custom_input.text())
                     except Exception:
                         custom_amount = 0
+                    if not custom_input.text().strip():
+                        QMessageBox.warning(self, "خطا" , "مبلغ دلخواه نمیتواند خالی باشد")
+                        try:
+                            self.timer.start(1000)
+                        except Exception:
+                            pass
+                        return
                     new_balance = balance - custom_amount
                     cur3.execute("UPDATE customers SET balance=? WHERE id=?", (new_balance, customer_id))
                     balance_text = f"<span style='color:red;'>{new_balance:,}</span>" if new_balance < 0 else f"{new_balance:,}"
-                    payment_info = f"کسر مبلغ دلخواه: {custom_amount:,} تومان\nموجودی جدید مشتری: {balance_text} تومان"
+                    payment_info = f"کسر مبلغ دلخواه: {custom_amount:,} تومان<br>موجودی جدید مشتری: {balance_text} تومان"
             else:
                 payment_info = f"پرداخت نقدی: {total:,} تومان"
 
