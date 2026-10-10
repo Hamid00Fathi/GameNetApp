@@ -4,6 +4,7 @@ from PyQt6.QtWidgets import QWidget, QTableWidgetItem, QMessageBox, QInputDialog
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QColor
 from customer_repository import customer_code_exists
+import database
 
 class CustomerListWindow(QWidget):
     def __init__(self):
@@ -52,16 +53,28 @@ class CustomerListWindow(QWidget):
         )
 
         if reply == QMessageBox.StandardButton.Yes:
-            conn = sqlite3.connect("gamenet.db")
+            try:
+                conn = database.get_connection()
+            except Exception:
+                conn = sqlite3.connect(database.DB_PATH, timeout=10)
             cur = conn.cursor()
-            cur.execute("DELETE FROM customers WHERE id=?", (self.selected_customer_id,))
-            conn.commit()
-            conn.close()
+            try:
+                cur.execute("DELETE FROM customers WHERE id=?", (self.selected_customer_id,))
+                conn.commit()
+            except sqlite3.IntegrityError:
+                conn.rollback()
+                QMessageBox.warning(self, "امکان حذف نیست", "برای این مشتری سابقهٔ سشن یا تراکنش وجود دارد. برای حفظ سوابق مالی، ابتدا سوابق مرتبط را بررسی کنید.")
+                return
+            finally:
+                conn.close()
 
             self.load_customers()
 
     def load_customers(self):
-        conn = sqlite3.connect("gamenet.db")
+        try:
+            conn = database.get_connection()
+        except Exception:
+            conn = sqlite3.connect(database.DB_PATH, timeout=10)
         cur = conn.cursor()
 
         cur.execute("SELECT id, name, family, code, balance FROM customers ORDER BY balance ASC")
@@ -125,7 +138,10 @@ class CustomerListWindow(QWidget):
             QMessageBox.warning(self, "خطا", "لطفاً یک مشتری را انتخاب کنید")
             return
 
-        conn = sqlite3.connect("gamenet.db")
+        try:
+            conn = database.get_connection()
+        except Exception:
+            conn = sqlite3.connect(database.DB_PATH, timeout=10)
         cur = conn.cursor()
         cur.execute("SELECT name, family, code FROM customers WHERE id=?", (self.selected_customer_id,))
         customer = cur.fetchone()
@@ -149,7 +165,10 @@ class CustomerListWindow(QWidget):
             QMessageBox.warning(self, "خطا", "این کد قبلاً ثبت شده است")
             return
 
-        conn = sqlite3.connect("gamenet.db")
+        try:
+            conn = database.get_connection()
+        except Exception:
+            conn = sqlite3.connect(database.DB_PATH, timeout=10)
         cur = conn.cursor()
         cur.execute("""
             UPDATE customers

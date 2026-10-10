@@ -4,12 +4,17 @@ import sys
 import os
 import requests
 from datetime import datetime
-
 from windows.main_window import MainWindow
 from database import create_tables
 from windows.theme import apply_dark_theme
+import certifi
 
+
+APP_DIR = os.path.dirname(os.path.abspath(__file__))
 API_BASE = "https://gamenet-server-mongo-production.up.railway.app"
+
+# فایل‌های نسبی برنامه (دیتابیس، آیکن و فایل‌های ورود) همیشه از پوشهٔ برنامه خوانده شوند.
+os.chdir(APP_DIR)
 
 
 # ---------------------------------------------------------
@@ -20,23 +25,54 @@ def check_login(username, password):
         r = requests.post(
             f"{API_BASE}/login",
             json={"username": username, "password": password},
-            timeout=5
+            timeout=5,
+            verify=certifi.where()
         )
 
-        if r.status_code == 200:
-            return True
+        # اگر سرور JSON برگرداند و ok=True باشد
+        try:
+            data = r.json()
+            if data.get("ok") is True:
+                return True
+        except:
+            pass
+
+        # اگر سرور پاسخ داده ولی لاگین اشتباه است
+        QMessageBox.critical(None, "خطا", 
+            "نام کاربری یا رمز ورود اشتباه است!")
         return False
 
-    except:
+    except requests.exceptions.SSLError:
+        QMessageBox.critical(None, "خطای SSL",
+            "ارتباط امن با سرور برقرار نشد!")
         return False
 
+    except requests.exceptions.ConnectionError:
+        QMessageBox.critical(None, "خطای اتصال",
+            "درخواست به سرور ارسال نشد!")
+        return False
+
+    except requests.exceptions.Timeout:
+        QMessageBox.critical(None, "تایم‌اوت",
+            "سرور در زمان مناسب پاسخ نداد!")
+        return False
+
+    except Exception as e:
+        QMessageBox.critical(None, "خطای ناشناخته",
+            f"خطای غیرمنتظره رخ داد:\n{e}")
+        return False
 
 # ---------------------------------------------------------
 # چک اشتراک آنلاین
 # ---------------------------------------------------------
 def check_subscription(username):
     try:
-        r = requests.get(f"{API_BASE}/subscription/{username}", timeout=5)
+        r = requests.get(
+            f"{API_BASE}/subscription/{username}",
+            timeout=5,
+            verify=certifi.where()
+        )
+
         data = r.json()
 
         expire_date = data.get("expireDate")
@@ -53,7 +89,12 @@ def check_subscription(username):
             return "active", expire_date, days_left
         return "inactive", expire_date, days_left
 
-    except:
+    except requests.exceptions.SSLError:
+        QMessageBox.critical(None, "خطای SSL", "ارتباط امن برقرار نشد.")
+        return "error", None, None
+
+    except Exception:
+        QMessageBox.critical(None, "خطا", "مشکل در دریافت اطلاعات اشتراک.")
         return "error", None, None
 
 
@@ -62,7 +103,12 @@ def check_subscription(username):
 # ---------------------------------------------------------
 def check_license_status(username):
     try:
-        r = requests.get(f"{API_BASE}/license/status/{username}", timeout=5)
+        r = requests.get(
+            f"{API_BASE}/license/status/{username}",
+            timeout=5,
+            verify=certifi.where()
+        )
+
         data = r.json()
 
         if not data.get("ok"):
@@ -74,7 +120,7 @@ def check_license_status(username):
         return False
 
     except:
-        return True  # آفلاین مود نباید به اینترنت وابسته باشد
+        return True  # حالت آفلاین باید بدون اینترنت کار کند
 
 
 # ---------------------------------------------------------
@@ -189,6 +235,7 @@ if os.path.exists("license.key") and os.path.exists("credentials.txt"):
             if line.startswith("password="):
                 password = line.split("=")[1].strip()
 
+    # چک واقعی لایسنس
     if username and password and check_license_status(username):
         window = MainWindow(mode="offline", username=username)
         window.gamenet_password = password
@@ -297,8 +344,10 @@ if choice == 2:
         r = requests.post(
             f"{API_BASE}/license/verify",
             json={"username": username, "key": license_key},
-            timeout=5
+            timeout=5,
+            verify=certifi.where()
         )
+        r.raise_for_status()
         data = r.json()
 
         if not check_login(username, password):
@@ -322,13 +371,28 @@ if choice == 2:
         window.show()
         sys.exit(app.exec())
 
-    except:
-        if os.path.exists("license.key") and os.path.exists("credentials.txt"):
-            window = MainWindow(mode="offline", username=username)
-            window.gamenet_password = password
-            window.lblSubscriptionInfo.setText("حالت آفلاین فعال است (بدون اینترنت)")
-            window.show()
-            sys.exit(app.exec())
+    except requests.RequestException:
+        # استفادهٔ آفلاین فقط در صورت وجود فایل‌های قبلی و تطبیق با حساب ذخیره‌شده مجاز است.
+        if os.path.isfile("license.key") and os.path.isfile("credentials.txt"):
+            try:
+                with open("license.key", "r", encoding="utf-8") as f:
+                    saved_license = f.read().strip()
+                with open("credentials.txt", "r", encoding="utf-8") as f:
+                    saved_credentials = dict(
+                        line.split("=", 1) for line in f.read().splitlines() if "=" in line
+                    )
+                if (saved_license and saved_credentials.get("username") == username
+                        and saved_credentials.get("password") == password):
+                    window = MainWindow(mode="offline", username=username)
+                    window.gamenet_password = password
+                    window.lblSubscriptionInfo.setText("حالت آفلاین فعال است (بدون اینترنت)")
+                    window.show()
+                    sys.exit(app.exec())
+            except (OSError, ValueError):
+                pass
 
-        QMessageBox.critical(None, "خطا", "اتصال اینترنت برقرار نیست و فایل لایسنس موجود نیست.")
+        QMessageBox.critical(None, "خطا", "اتصال اینترنت برقرار نیست و لایسنس ذخیره‌شدهٔ معتبر در دسترس نیست.")
+        sys.exit()
+    except (ValueError, KeyError) as e:
+        QMessageBox.critical(None, "خطا", f"پاسخ سرور لایسنس قابل پردازش نیست: {e}")
         sys.exit()

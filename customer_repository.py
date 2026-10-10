@@ -1,8 +1,12 @@
 import sqlite3
+import database
 
 
 def get_customers():
-    conn = sqlite3.connect("gamenet.db")
+    try:
+        conn = database.get_connection()
+    except Exception:
+        conn = sqlite3.connect(database.DB_PATH, timeout=10)
     cursor = conn.cursor()
 
     cursor.execute("SELECT id , name ,family , code , balance FROM customers ORDER BY balance DESC")
@@ -13,7 +17,10 @@ def get_customers():
     return rows
 
 def add_customer(name ,family , code , balance):
-    conn = sqlite3.connect("gamenet.db")
+    try:
+        conn = database.get_connection()
+    except Exception:
+        conn = sqlite3.connect(database.DB_PATH, timeout=10)
     cursor = conn.cursor()
 
     cursor.execute("""
@@ -24,7 +31,10 @@ def add_customer(name ,family , code , balance):
     conn.close()
 
 def charge_customer(customer_id , amount):
-    conn = sqlite3.connect("gamenet.db")
+    try:
+        conn = database.get_connection()
+    except Exception:
+        conn = sqlite3.connect(database.DB_PATH, timeout=10)
     cursor = conn.cursor()
 
     cursor.execute("""
@@ -37,7 +47,10 @@ def charge_customer(customer_id , amount):
     conn.close()
 
 def get_balance(customer_id):
-    conn = sqlite3.connect("gamenet.db")
+    try:
+        conn = database.get_connection()
+    except Exception:
+        conn = sqlite3.connect(database.DB_PATH, timeout=10)
     cursor = conn.cursor()
 
     cursor.execute("SELECT balance FROM customers WHERE id = ?" , (customer_id , ))
@@ -49,7 +62,10 @@ def get_balance(customer_id):
     return balance
 
 def customer_code_exists(code):
-    conn = sqlite3.connect("gamenet.db")
+    try:
+        conn = database.get_connection()
+    except Exception:
+        conn = sqlite3.connect(database.DB_PATH, timeout=10)
     cursor = conn.cursor()
 
     cursor.execute("SELECT id FROM customers WHERE code = ?", (code,))

@@ -37,9 +37,19 @@ def apply_dark_theme():
 
     QTableWidget {
         background-color: #1a1a1a;
+        alternate-background-color: #0d1114;
         gridline-color: #00eaff;
         color: #cfcfcf;
         font-size: 17px;
+    }
+
+    QTableWidget::item:selected {
+        background-color: #005a63;
+        color: #ffffff;
+    }
+
+    QTableWidget::item:hover {
+        background-color: #0f2a2d;
     }
 
     QHeaderView::section {

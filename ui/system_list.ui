@@ -16,12 +16,6 @@
     <height>600</height>
    </size>
   </property>
-  <property name="maximumSize">
-   <size>
-    <width>750</width>
-    <height>600</height>
-   </size>
-  </property>
   <property name="font">
    <font>
     <family>B Nazanin</family>
@@ -89,16 +83,6 @@
      </attribute>
      <column>
       <property name="text">
-       <string>حذف</string>
-      </property>
-     </column>
-     <column>
-      <property name="text">
-       <string>ویرایش</string>
-      </property>
-     </column>
-     <column>
-      <property name="text">
        <string>قیمت هر ساعت</string>
       </property>
      </column>
@@ -110,11 +94,29 @@
     </widget>
    </item>
    <item>
-    <widget class="QPushButton" name="addButton">
-     <property name="text">
-      <string>اضافه کردن سیستم</string>
-     </property>
-    </widget>
+    <layout class="QHBoxLayout" name="horizontalLayout">
+     <item>
+      <widget class="QPushButton" name="deleteButton">
+       <property name="text">
+        <string>حذف</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="editButton">
+       <property name="text">
+        <string>ویرایش</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="addButton">
+       <property name="text">
+        <string>اافزودن سیستم</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
    </item>
   </layout>
  </widget>
