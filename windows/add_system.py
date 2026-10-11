@@ -1,0 +1,43 @@
+from PyQt6.QtWidgets import QWidget , QMessageBox
+from system_repository import add_system , system_name_exists
+
+
+class AddSystemWindow(QWidget):
+    def __init__(self):
+        super().__init__()
+        import sys, os
+        from windows.ui_builder import build_ui
+        build_ui(self, 'add_system')
+
+
+        self.addButton.clicked.connect(self.save_system)
+
+    def save_system(self):
+        try:
+            name = self.systemNameLineEdit.text().strip()
+
+            if name == "":
+                QMessageBox.warning(self, "خطا", "لطفا نام سیستم را وارد کنید")
+                return
+
+            if system_name_exists(name):
+                QMessageBox.warning(self, "خطا!", "این نام سیستم قبلا ثبت شده است")
+                return
+
+            # گرفتن قیمت از اسپین‌باکس
+            price_per_hour = self.priceSpinBox.value()
+
+            if price_per_hour == 0:
+                QMessageBox.warning(self, "خطا!", "قیمت نمیتواند صفر باشد")
+                return
+            
+
+            add_system(name, price_per_hour)
+
+            QMessageBox.information(self, "موفق", "سیستم با موفقیت اضافه شد")
+            self.close()
+
+            
+
+        except Exception as e:
+            QMessageBox.critical(self , "خطا" , "خطایی در اضافه کردن سیستم رخ داد لطفا دوباره تلاش کنید")
